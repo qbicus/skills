@@ -1,0 +1,4 @@
+interface:
+  display_name: "Modernize Plan"
+  short_description: "Plan execution for modernization and upgrades."
+  default_prompt: "Use $modernize-plan to turn an approved modernization evaluation into an execution-ready plan with sequencing, rollback, verification, and ordered tasks."

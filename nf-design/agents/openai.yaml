@@ -1,0 +1,4 @@
+interface:
+  display_name: "NF Design"
+  short_description: "Turn approved specs into file-by-file implementation plans."
+  default_prompt: "Use $nf-design to create a file-by-file implementation design from an approved spec."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "NF Avalonia"
+  short_description: "Avalonia guidance for new-feature desktop UI work."
+  default_prompt: "Use $nf-avalonia to guide the Avalonia-specific spec, design, task, and implementation details inside the new-feature workflow."

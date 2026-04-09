@@ -1,0 +1,4 @@
+interface:
+  display_name: "TAS 03 Architecture Normalizer"
+  short_description: "Normalize grouped architecture entities"
+  default_prompt: "Use $tas-03-architecture-normalizer to normalize analyzer and grouper outputs into canonical architecture entities under a workspace folder."

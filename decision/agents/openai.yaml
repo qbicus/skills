@@ -1,0 +1,4 @@
+interface:
+  display_name: "Decision Log"
+  short_description: "Record implementation decisions and rationale."
+  default_prompt: "Use $decision to capture the implementation decision, rationale, alternatives considered, and rejected options in a running log."
