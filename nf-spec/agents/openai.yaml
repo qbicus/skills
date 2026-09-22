@@ -1,4 +1,0 @@
-interface:
-  display_name: "NF Spec"
-  short_description: "Create strict 12-section feature specifications."
-  default_prompt: "Use $nf-spec to write a feature specification with all required sections and required/optional field markers."
