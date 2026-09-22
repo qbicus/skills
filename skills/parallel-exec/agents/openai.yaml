@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parallel Exec"
+  short_description: "Run approved parallel-safe tasks with worker orchestration."
+  default_prompt: "Use $parallel-exec to execute approved parallel-safe tasks from a task plan with worker assignment, live status tracking, and merge checkpoints."

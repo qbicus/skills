@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "embedding": {
+    "enabled": true,
+    "provider": "local-dotnet",
+    "model": "default",
+    "skipByDefault": false
+  },
+  "vectorStore": {
+    "provider": "sqlite",
+    "distance": "cosine"
+  },
+  "includeExtensions": [
+    ".md",
+    ".cs",
+    ".vb",
+    ".go",
+    ".py",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".svelte",
+    ".sql",
+    ".razor",
+    ".cshtml",
+    ".json",
+    ".yml",
+    ".yaml"
+  ],
+  "excludeDirectories": [
+    ".git",
+    ".svn",
+    ".hg",
+
+    ".ai-index",
+    ".idea",
+    ".vs",
+    ".vscode",
+
+    "bin",
+    "obj",
+    "node_modules",
+    "dist",
+    "build",
+    ".next",
+    ".svelte-kit",
+    ".nuxt",
+    "coverage",
+    "packages",
+    "public",
+
+    "target",
+    "vendor",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "env"
+  ],
+  "excludeFiles": [
+    "*.min.js",
+    "*.bundle.js",
+    "*.generated.cs",
+    "*.g.cs",
+    "*.map",
+    "*.lock",
+    "*.log",
+    "*.tmp",
+    "*.cache",
+	".ai-index.json"
+  ],
+  "includeFiles": [
+    "public/locales/**/*.json",
+    "public/docs/**/*.md"
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Modernize Eval"
+  short_description: "Evaluate migrate vs rewrite modernization strategy."
+  default_prompt: "Use $modernize-eval to assess this project, compare modernization options, score migration vs rewrite pressure, and produce a management-ready recommendation report."

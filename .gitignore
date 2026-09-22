@@ -1,0 +1,27 @@
+# Developer-local overrides and machine-specific state
+local/
+*.local.md
+*.local.json
+
+# Runtime/generated state
+*.log
+.DS_Store
+Thumbs.db
+
+# Local/runtime state
+bin/
+local/
+.install/
+
+# Generated Python files
+__pycache__/
+*.pyc
+
+# General release/archive files
+*.zip
+*.tar.gz
+*.tgz
+SHA256SUMS
+
+# Keep the sqlite-vec distribution assets in Git
+!native/sqlite-vec/*.tar.gz

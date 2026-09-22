@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Review"
+  short_description: "Review code and fix validated issues."
+  default_prompt: "Use $code-review to review the current changes, fix validated issues, and re-review until clean."

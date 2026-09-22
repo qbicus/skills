@@ -1,0 +1,4 @@
+interface:
+  display_name: "NF Tasks"
+  short_description: "Break approved designs into ordered task plans."
+  default_prompt: "Use $nf-tasks to create a task plan from an approved design with ordered tasks and quality checks."

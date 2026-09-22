@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session Close"
+  short_description: "Capture session summary, decisions, and next steps."
+  default_prompt: "Use $session-close to summarize this session, append important decisions, and record blockers and next steps for the next restart."

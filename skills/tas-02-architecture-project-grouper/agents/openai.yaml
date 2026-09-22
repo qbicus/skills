@@ -1,0 +1,4 @@
+interface:
+  display_name: "TAS 02 Architecture Project Grouper"
+  short_description: "Group analyzed projects into platforms"
+  default_prompt: "Use $tas-02-architecture-project-grouper to read analyzer outputs and group related projects into platforms under a workspace folder."

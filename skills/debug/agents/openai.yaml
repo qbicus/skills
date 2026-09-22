@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debug"
+  short_description: "Debug from logs before changing code."
+  default_prompt: "Use $debug to inspect production or build logs first, identify the failure pattern, and only then propose or apply code changes."

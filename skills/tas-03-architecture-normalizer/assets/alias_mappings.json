@@ -1,0 +1,20 @@
+{
+  "platform": {},
+  "project": {},
+  "service": {
+    "oidc": "OpenID Connect",
+    "openid connect": "OpenID Connect",
+    "jwt": "JWT"
+  },
+  "datastore": {
+    "postgres": "PostgreSQL",
+    "postgresql": "PostgreSQL",
+    "sql server": "SQL Server",
+    "mssql": "SQL Server"
+  },
+  "integration": {
+    "auth0": "Auth0",
+    "send grid": "SendGrid",
+    "stripe api": "Stripe"
+  }
+}

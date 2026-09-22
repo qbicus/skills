@@ -1,0 +1,4 @@
+interface:
+  display_name: "TAS 01 Project Architecture Analyzer"
+  short_description: "Analyze a repo into an architecture profile"
+  default_prompt: "Use $tas-01-project-architecture-analyzer to inspect a repository and produce a Project Architecture Profile under a workspace folder."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "TAS 04 Generator"
+  short_description: "Generate TAS markdown from normalized data"
+  default_prompt: "Use $tas-04-generator to generate Technical Architecture Specification markdown files from normalized architecture data under a workspace folder."
