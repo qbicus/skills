@@ -9,6 +9,8 @@ Use it when you want:
 
 Default behavior:
 - requires `modernize-eval` input
+- classifies modernization planning as `substantial: true` by default and runs an advisor plan checkpoint
+- assigns provider-neutral execution roles where delegation is useful
 - produces current-state vs target-state planning
 - includes sequencing, risks, rollback, verification, and ordered execution tasks
 - keeps `modernize-plan.md` status-aware so it can be executed sequentially or via `parallel-exec`

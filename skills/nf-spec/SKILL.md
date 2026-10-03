@@ -14,6 +14,7 @@ Use the template in [references/spec-template.md](references/spec-template.md) u
 1. Collect missing inputs
 - Ask only for details that block correctness: feature goal, user roles, core entities, API surface, constraints, and rollout expectations.
 - Ask for `projectFolder` and `featureShortName` if not already provided.
+- Classify the feature explicitly as `substantial: true` or `substantial: false`. Features are substantial by default unless the requested change is genuinely small/local; do not use file count alone.
 - Ask for preferred maximum parallel agent count only when the feature can plausibly be split into independent workstreams; otherwise default to `1`.
 - If the feature includes Avalonia or cross-platform desktop UI, activate `nf-avalonia` and capture the required desktop UX, platform targets, and packaging expectations.
 
@@ -118,6 +119,7 @@ When users explicitly request omission, skip this section and keep the 12-sectio
 
 - Split into incremental phases with entry/exit criteria.
 - Note migration or compatibility risks per phase.
+- Include an `Execution Classification` subsection with `substantial: true|false` and a short rationale.
 - Include a `Parallel Execution Preference` subsection stating whether parallel implementation is feasible, the approved maximum agent count, and the constraints that limit safe parallelism.
 
 ### Open TODOs
@@ -139,6 +141,7 @@ Before finalizing, verify all checks pass:
 - API Endpoints section explicitly declares `No API endpoints needed for this implementation` when non-service.
 - Validation rules cover boundary conditions for constrained fields.
 - Error responses exist for validation failures and major domain failures.
+- Phasing includes an explicit `substantial: true|false` classification with rationale.
 - Phasing includes a clear parallel execution preference with either a justified agent count greater than `1` or an explicit `1` when work should stay sequential.
 - Open TODOs capture unresolved ambiguities.
 

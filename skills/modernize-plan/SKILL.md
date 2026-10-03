@@ -9,6 +9,8 @@ Plan modernization work for an existing system. Use the approved `modernize-eval
 
 Use the template in [references/modernize-plan-template.md](references/modernize-plan-template.md) unless the user requests a different format.
 
+Modernization planning is `substantial: true` by default. Use `primary` for strategy/material decisions, `executor` for bounded repository analysis, and `researcher` for external framework/package/vendor evidence. Before presenting the final plan, run `advisor` in `plan` mode and resolve or surface material concerns.
+
 ## Workflow
 
 1. Confirm inputs
@@ -34,6 +36,7 @@ Use the template in [references/modernize-plan-template.md](references/modernize
 5. Produce the execution plan
 - Build an ordered, testable execution plan with explicit dependencies.
 - Include task-level acceptance checks and verification evidence.
+- Assign an intended execution role (`primary|executor|researcher|fast`) where delegation is useful.
 - Call out tasks that can run in parallel only when they are truly independent.
 - Treat `modernize-plan.md` as a living execution artifact by including status-aware execution tracking.
 
@@ -105,7 +108,7 @@ Always include these sections in this exact order:
 
 ### Ordered Execution Plan
 - Use stable IDs: `M001`, `M002`, ...
-- For each item include: objective, files/areas touched, dependencies, execution mode, worker slot, status, acceptance check, and verification evidence.
+- For each item include: objective, files/areas touched, dependencies, execution mode, execution role, worker slot, status, acceptance check, and verification evidence.
 - Keep tasks implementation-ready.
 
 ### Execution Status

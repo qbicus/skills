@@ -20,6 +20,7 @@ Enforce a gated delivery process for new work. Do not skip stages, do not start 
 - Produce the specification using the `nf-spec` skill.
 - If the feature uses Avalonia, apply `nf-avalonia` guidance while drafting the spec.
 - Write the spec to `<projectFolder>/_localnotes/<featureShortName>/specs.md` unless the user requests another filename.
+- Require the spec to record `substantial: true|false` under its execution classification. Treat normal feature work as substantial by default; only genuinely small/local work should be false.
 - Capture a `Parallel Execution Preference` in the spec: ask for preferred maximum parallel agents only when the work can plausibly be decomposed safely; otherwise record `1`.
 - Do not continue automatically after drafting.
 
@@ -35,6 +36,8 @@ Enforce a gated delivery process for new work. Do not skip stages, do not start 
 - If the approved spec indicates Avalonia or cross-platform desktop UI, apply `nf-avalonia` guidance while drafting the design.
 - Write the design to `<projectFolder>/_localnotes/<featureShortName>/design.md` unless the user requests another filename.
 - Keep the design traceable to the approved spec; do not introduce hidden scope expansion.
+- Use the provider `primary` role for material design/architecture decisions. Routine repository exploration may use the `executor` role, and external documentation research may use the `researcher` role.
+- If the approved spec is `substantial: true`, run `advisor` in `plan` mode on the drafted design before presenting it for design approval. Resolve material concerns or surface them as `NEEDS_DECISION` before the approval gate.
 
 5. Stop for design approval
 - Ask for explicit approval of the design.
@@ -47,7 +50,7 @@ Enforce a gated delivery process for new work. Do not skip stages, do not start 
 - Treat `nf-tasks` as the required tasks phase for this workflow.
 - Produce the task plan from the approved design.
 - If the approved design includes Avalonia UI work, apply `nf-avalonia` guidance while generating UI-related task slices and dependencies.
-- Require the task plan to mark `sequential-only` vs `parallel-safe` tasks, define any parallel batches, and assign `Agent 1..N` slots without exceeding the approved maximum from the spec.
+- Require the task plan to mark `sequential-only` vs `parallel-safe` tasks, define any parallel batches, assign the intended execution role (`primary|executor|researcher|fast`) per task where delegation is useful, and assign `Agent 1..N` slots without exceeding the approved maximum from the spec.
 - Write the task plan to `<projectFolder>/_localnotes/<featureShortName>/dev-todos.md` unless the user requests another filename.
 
 7. Stop for task-plan approval
@@ -67,7 +70,11 @@ Enforce a gated delivery process for new work. Do not skip stages, do not start 
 - Update `dev-todos.md` during execution to mark tasks `in-progress`, `blocked`, or `done`.
 - Treat execution as resumable: a later session should continue from the remaining approved tasks recorded in `dev-todos.md`.
 - If the approved work includes Avalonia UI, keep `nf-avalonia` active during implementation.
+- Use `executor` for bounded implementation/test loops, `researcher` for external evidence, `fast` only for low-risk mechanical routing, and escalate material choices to `primary`.
+- Executor scope is bounded: it may touch directly related files required for the assigned task but must report meaningful expansion and must not silently make architecture/contract/storage/rollout decisions.
+- If substantially the same failure reaches the effective provider's `behavior.advisor.repeatedFailureThreshold` (resolve the merged provider config; use the framework provider helper when available), run `advisor` in `stuck` mode before trying another materially similar approach.
 - After implementation, verify with the narrowest useful tests/build commands and report what was or was not run.
+- If the approved spec is `substantial: true`, run `advisor` in `complete` mode after verification and before declaring the feature complete. Resolve material concerns or report the blocking outcome.
 - During execution, append a `decision` entry whenever an implementation choice materially changes behavior, contracts, architecture, storage, rollout, operability, or testing strategy.
 - If execution reveals a change that affects only task sequencing, return to `nf-tasks` approval.
 - If execution reveals a change that affects implementation approach or architecture without changing approved requirements, return to `nf-design` approval and then re-run `nf-tasks`.
@@ -95,7 +102,7 @@ Enforce a gated delivery process for new work. Do not skip stages, do not start 
 - At each stage, state the current gate clearly: `awaiting spec approval`, `awaiting design approval`, or `awaiting task-plan approval`.
 - Reference the artifact path written for that stage.
 - Reference `decisions.md` whenever a new decision entry is added.
-- When execution begins, state that all three approvals have been received.
+- When execution begins, state that all three approvals have been received and include the approved `substantial: true|false` classification.
 - During execution, show task progress with completed, active, blocked, and remaining tasks or batches.
 - Include an explicit visual cue such as `done: T001, T002 | working: T003 | blocked: T004 | remaining: T005, T006`.
 - When parallel batches are active, show the current work split by agent or batch and reference `parallel-exec` if it is orchestrating the batch.

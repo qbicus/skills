@@ -14,12 +14,13 @@ Use the template in [references/dev-todos-template.md](references/dev-todos-temp
 1. Confirm inputs
 - Require an approved design doc path or pasted content.
 - Capture `projectFolder` and `featureShortName`.
-- Read the approved spec's `Parallel Execution Preference` before assigning task groups.
+- Read the approved spec's `Execution Classification` and `Parallel Execution Preference` before assigning task groups.
 
 2. Decompose into tasks
 - Break design into small, ordered tasks with explicit dependencies.
 - Keep tasks implementation-ready and scoped to single outcomes.
 - Mark tasks as sequential-only or parallel-safe based on dependencies, shared touchpoints, and the approved maximum parallel agent count from the spec.
+- Assign an intended execution role where delegation is useful: `executor` for bounded implementation/test work, `researcher` for external evidence, `primary` for material decisions/integration, and `fast` only for trivial low-risk routing.
 - When parallel work is safe, group tasks into explicit parallel batches and assign agent slots such as `Agent 1`, `Agent 2`, up to the approved maximum.
 - Treat `dev-todos.md` as a living execution tracker, not only a planning artifact.
 
@@ -52,7 +53,7 @@ Always include these sections in this exact order:
 
 ### Ordered Task List
 - Use stable IDs: `T001`, `T002`, ...
-- For each task include: objective, files/services touched, dependencies, execution mode, parallel batch, agent slot, status, and acceptance check.
+- For each task include: objective, files/services touched, dependencies, execution mode, execution role, parallel batch, agent slot, status, and acceptance check.
 - Keep each task small enough for one focused implementation pass.
 
 ### Execution Status
@@ -62,6 +63,7 @@ Always include these sections in this exact order:
 - Update this section and the task table during execution so the file stays resumable across sessions.
 
 ### Delivery Strategy
+- Carry forward the spec's `substantial: true|false` classification.
 - State whether execution is `sequential-only` or `parallel-eligible`.
 - If parallel-eligible, include the approved maximum agent count from the spec and summarize which batches can run concurrently.
 

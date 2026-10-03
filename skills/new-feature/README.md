@@ -6,10 +6,12 @@ Chain:
 - `nf-spec`
 - approval
 - `nf-design`
+- `advisor:plan` when substantial
 - approval
 - `nf-tasks`
 - approval
 - execution
+- `advisor:complete` before substantial work is declared done
 
 Also uses:
 - `decision` for important decisions
@@ -19,7 +21,10 @@ Default behavior:
 - do not skip approvals
 - pause and fall back to the earliest invalidated stage when scope or design changes
 - update `dev-todos.md` during execution so work can pause and resume across sessions
-- use `parallel-exec` when approved parallel execution is chosen
+- record and carry `substantial: true|false` from the spec
+- use provider-neutral roles (`primary`, `executor`, `researcher`, `advisor`, `fast`)
+- invoke `advisor:stuck` when the configured repeated-failure threshold is reached
+- use `parallel-exec` only when approved parallel execution is chosen
 
 Example prompts:
 - `Use $new-feature for customer-import and start from nf-spec.`

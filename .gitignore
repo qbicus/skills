@@ -4,6 +4,7 @@ local/
 *.local.json
 
 # Runtime/generated state
+generated/
 *.log
 .DS_Store
 Thumbs.db

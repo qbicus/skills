@@ -1,6 +1,7 @@
 # Modernize Plan Template
 
 ## 1. Evaluation Snapshot
+- substantial: `true`
 - `modernize-eval` input:
 - Recommended strategy:
 - Confidence:
@@ -66,9 +67,9 @@
 - Safety guardrails:
 
 ## 12. Ordered Execution Plan
-| ID | Objective | Files/Areas | Dependencies | Execution Mode | Worker Slot | Status | Acceptance Check | Verification Evidence |
-|---|---|---|---|---|---|---|---|---|
-| `M001` | `<objective>` | `<files/areas>` | `<deps>` | `sequential|parallel-safe` | `<none|Agent 1>` | `not-started|in-progress|blocked|done` | `<acceptance>` | `<evidence>` |
+| ID | Objective | Files/Areas | Dependencies | Execution Mode | Role | Worker Slot | Status | Acceptance Check | Verification Evidence |
+|---|---|---|---|---|---|---|---|---|---|
+| `M001` | `<objective>` | `<files/areas>` | `<deps>` | `sequential|parallel-safe` | `primary|executor|researcher|fast` | `<none|Agent 1>` | `not-started|in-progress|blocked|done` | `<acceptance>` | `<evidence>` |
 
 ## 13. Execution Status
 - Completed:

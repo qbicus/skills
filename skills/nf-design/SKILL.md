@@ -9,6 +9,8 @@ Produce execution-ready technical designs from approved specs.
 
 Use the template in [references/design-template.md](references/design-template.md) unless the user requests a different format.
 
+Use the provider `primary` role for material architecture/design choices, `executor` for bounded repository exploration, and `researcher` for external framework/API/library evidence. Carry forward the approved spec's `substantial: true|false` classification. For substantial designs, run `advisor` in `plan` mode before presenting the design as ready for approval.
+
 ## Workflow
 
 1. Confirm inputs

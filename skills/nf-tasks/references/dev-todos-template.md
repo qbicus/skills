@@ -10,14 +10,15 @@
 - Milestone sequence:
 - Risk-first tasks:
 - Rollout approach:
+- substantial: `true|false`
 - Execution mode: `sequential-only|parallel-eligible`
 - Approved max parallel agents:
 - Parallel batch summary:
 
 ## 3. Ordered Task List
-| Task ID | Objective | Touchpoints | Dependencies | Execution Mode | Parallel Batch | Agent Slot | Status | Acceptance Check |
-|---|---|---|---|---|---|---|---|---|
-| `T001` | `<objective>` | `<files/services>` | `<task ids>` | `sequential|parallel-safe` | `<none|P1>` | `<none|Agent 1>` | `not-started|in-progress|blocked|done` | `<measurable outcome>` |
+| Task ID | Objective | Touchpoints | Dependencies | Execution Mode | Role | Parallel Batch | Agent Slot | Status | Acceptance Check |
+|---|---|---|---|---|---|---|---|---|---|
+| `T001` | `<objective>` | `<files/services>` | `<task ids>` | `sequential|parallel-safe` | `primary|executor|researcher|fast` | `<none|P1>` | `<none|Agent 1>` | `not-started|in-progress|blocked|done` | `<measurable outcome>` |
 
 ## 4. Execution Status
 - Completed:

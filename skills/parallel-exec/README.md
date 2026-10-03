@@ -9,7 +9,8 @@ Use it when you want:
 
 Default behavior:
 - requires an approved status-aware execution artifact
-- only runs dependency-ready parallel-safe tasks
+- only runs dependency-ready tasks explicitly approved as parallel-safe; it never auto-enables parallelism
+- keeps worker scope bounded and escalates `NEEDS_DECISION` / `NEEDS_RESEARCH` instead of silently expanding the plan
 - updates the shared task artifact as work progresses
 
 Example prompts:

@@ -51,3 +51,13 @@ Run it when:
 - the user says they are done, closing, wrapping up, or switching projects.
 
 Do not run it for simple Q&A with no project changes.
+
+## Provider-aware execution
+
+Use the shared role-routing policy in `providers/claude.yml` and `docs/model-routing.md`. Shared skills request `primary`, `executor`, `researcher`, `advisor`, or `fast`; they must not hard-code Claude model names. Apply repository overrides from `<repo>/.ai/providers/claude.yml` when present.
+
+When installed, delegate provider roles to the generated Claude subagents `ai-executor`, `ai-researcher`, `ai-advisor`, and `ai-fast`. Keep `primary` in the owning conversation. The generated subagent frontmatter carries model, effort, and read/write tool boundaries; repository provider overrides require regenerating/re-syncing the native artifacts before they affect Claude's native agent files. If a preferred role model is unavailable, use the generated `ai-<role>-fallback-N` agent in order.
+
+For substantial plan/stuck/completion checkpoints, use the reusable `advisor` skill. Prefer Claude Code's native advisor tool when it is enabled, compatible with the active model, and available; otherwise use an isolated advisor-role subagent/fallback. Follow the configured repeated-failure threshold rather than repeatedly retrying the same approach.
+
+Parallel worker execution remains plan-controlled: use workers concurrently only where an approved plan explicitly marks parallel-safe work and parallel execution has been selected.

@@ -68,6 +68,76 @@ Common mappings:
 - Modernization planning: `skills/modernize-plan`
 - Parallel execution: `skills/parallel-exec`
 - Architecture/TAS workflows: `skills/tas-*`
+- Independent checkpoint review: `skills/advisor`
+
+
+## Provider-aware role routing
+
+Shared skills are provider-agnostic. They request execution roles instead of concrete model names. Resolve roles through:
+
+- `providers/codex.yml` when running under Codex/OpenAI;
+- `providers/claude.yml` when running under Claude;
+- optional repository overrides at `<repo>/.ai/providers/<provider>.yml`.
+
+Use `AI_PROVIDER=codex|claude` only as an explicit override when automatic runtime detection is unavailable or intentionally overridden. Repository provider values override global values.
+
+Standard roles:
+
+- `primary`: planning, architecture, material decisions, integration, and final ownership;
+- `executor`: bounded implementation/edit/test work;
+- `researcher`: external documentation/API/library research;
+- `advisor`: independent plan/stuck/completion review;
+- `fast`: trivial low-risk routing decisions.
+
+Do not hard-code provider model names inside shared skills.
+
+When native subagents are available, use the framework-generated role agents:
+
+- `ai-executor` for `executor`;
+- `ai-researcher` for `researcher`;
+- `ai-advisor` for portable advisor fallback/review;
+- `ai-fast` for `fast`.
+
+`primary` is the owning/main thread. The native client default for that thread is generated from the provider `primary` mapping.
+
+### Mandatory role fallback protocol
+
+When a delegated native role agent fails because its configured model is unavailable, unsupported, inaccessible to the account, or otherwise cannot start, the parent **must** retry that same delegated task with the generated fallback agents in numeric order:
+
+1. `ai-<role>`
+2. `ai-<role>-fallback-1`
+3. `ai-<role>-fallback-2` (and any later generated fallback)
+
+Do not silently perform the delegated task in the `primary` thread after a role-model availability failure. The primary thread may take over only when the provider configuration explicitly resolves/falls back to `primary`, or when every configured native candidate has failed and the workflow reports that escalation/blocker explicitly. A model-availability failure is not a task failure and must not consume the task's normal retry/failure budget. Report when a fallback agent was used when it materially affects cost, quality, or reviewer independence.
+
+The provider helper is the executable source of truth for merged config and native fragments:
+
+```text
+python ~/.ai/scripts/ai.py provider --effective
+python ~/.ai/scripts/ai.py provider --role executor
+python ~/.ai/scripts/ai.py provider --validate
+```
+
+### Execution boundaries
+
+- Worker scope is `bounded`: executors may touch directly related files required for the assigned task, but must report meaningful expansion.
+- Escalate architecture, contract, storage, rollout, or other material choices as `NEEDS_DECISION`.
+- Use `NEEDS_RESEARCH` when external evidence is required before safe continuation.
+- Use `BLOCKED` when continuation requires missing input/infrastructure; include the blocker, evidence collected, exact prerequisite/input needed, and useful progress already completed.
+- Use `COMPLETE` only when the assigned scope and acceptance checks are satisfied.
+- Parallel execution is `plan-only`: do not create parallel workers unless the approved plan explicitly marks the work parallel-safe/parallel-eligible and parallel execution has been selected.
+
+### Advisor checkpoints
+
+Use the reusable `advisor` skill for:
+
+- `plan`: before a substantial plan is committed or presented for approval;
+- `stuck`: when substantially the same failure reaches the provider-configured threshold (default `2`);
+- `complete`: before substantial work is declared complete.
+
+Parent workflows explicitly classify work as `substantial: true|false`; do not use file count as the sole classifier.
+
+See `docs/model-routing.md` for resolution, fallbacks, overrides, and provider-specific notes.
 
 ## Session close rule
 

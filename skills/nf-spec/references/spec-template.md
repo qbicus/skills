@@ -72,6 +72,11 @@ If not applicable, write: `No API endpoints needed for this implementation` and 
 - UX behavior:
 
 ## 10. Phasing
+
+### Execution Classification
+- substantial: `true|false`
+- Rationale:
+
 | Phase | Scope | Entry Criteria | Exit Criteria | Risks |
 |---|---|---|---|---|
 | `P1` | `<scope>` | `<entry>` | `<exit>` | `<risk>` |

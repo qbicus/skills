@@ -13,7 +13,8 @@ Use the structure in [references/parallel-exec-template.md](references/parallel-
 
 1. Confirm execution input
 - Require an approved execution artifact such as `dev-todos.md` or `modernize-plan.md`.
-- Confirm the user chose parallel execution and provide or infer the allowed worker count.
+- Confirm the approved plan explicitly permits parallel execution for the selected tasks.
+- Confirm the user or parent workflow chose parallel execution and provide or infer the allowed worker count. Never auto-parallelize solely because tasks look independent. Resolve the provider `behavior.execution.maxConcurrentAgents` value and use the lower of the approved plan/user limit and provider limit.
 - Read current task statuses before assigning any worker.
 
 2. Select an eligible batch
@@ -28,12 +29,17 @@ Use the structure in [references/parallel-exec-template.md](references/parallel-
 - Keep each worker scoped to a single approved task unless the artifact explicitly defines a batch-level unit.
 
 4. Execute in isolated worker slots
-- Each worker performs only its assigned task.
+- Each worker uses the task's configured role, normally `executor` unless the approved artifact says otherwise.
+- Worker scope is bounded: each worker owns its assigned task and may touch directly related files required to complete it, but must report meaningful scope expansion.
+- A worker must return `NEEDS_DECISION` instead of silently making a material architecture, contract, storage, rollout, or shared-policy decision.
+- A worker must return `NEEDS_RESEARCH` when external evidence is required before safe continuation.
 - Each worker reports:
   - task ID
   - files/areas touched
   - verification run
-  - resulting status: `done` or `blocked`
+  - resulting orchestration outcome: `COMPLETE`, `BLOCKED`, `NEEDS_DECISION`, or `NEEDS_RESEARCH`
+  - resulting task status: `done` or `blocked` as appropriate
+  - for `BLOCKED`: blocker, evidence collected, exact prerequisite/input needed, and useful progress already completed
 - Mark task status `in-progress` before execution begins.
 
 5. Merge and checkpoint
@@ -55,8 +61,8 @@ Use the structure in [references/parallel-exec-template.md](references/parallel-
 
 ## Worker Execution Contract
 
-- A worker may act only within its assigned task scope.
-- A worker must not expand scope because “it was nearby.”
+- A worker follows bounded scope: directly related files needed for the assigned outcome are allowed, but unrelated opportunistic changes are not.
+- A worker must report meaningful scope expansion rather than hiding it.
 - A worker must report when the task becomes blocked instead of silently changing plan shape.
 - A worker must run the verification expected by the task before claiming `done`, unless blocked by a clearly stated reason.
 

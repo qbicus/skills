@@ -1,0 +1,65 @@
+version: 1
+provider: claude
+
+# Shared skills refer to roles, never concrete models.
+# Repository overrides may replace any value from:
+# <repo>/.ai/providers/claude.yml
+
+roles:
+  primary:
+    model: opus
+    effort: high
+    fallbackModels:
+      - sonnet
+
+  executor:
+    model: sonnet
+    effort: medium
+    fallbackModels:
+      - opus
+
+  researcher:
+    model: sonnet
+    effort: medium
+    fallbackModels:
+      - opus
+
+  advisor:
+    model: sonnet
+    effort: medium
+    fallbackRoles:
+      - executor
+      - primary
+
+  fast:
+    model: haiku
+    effort: low
+    fallbackRoles:
+      - executor
+      - primary
+
+behavior:
+  advisor:
+    repeatedFailureThreshold: 2
+    completionCheck: substantial-only
+    planCheck: substantial-only
+
+  execution:
+    workerScope: bounded
+    parallelMode: plan-only
+    maxConcurrentAgents: 4
+
+  workClassification:
+    defaultSubstantial: false
+
+runtime:
+  automaticDetection: true
+  explicitProviderOverrideEnvironmentVariable: AI_PROVIDER
+  repositoryOverridePath: .ai/providers/claude.yml
+  nativeAgentPrefix: ai-
+
+# Framework advisor checkpoints use the isolated ai-advisor subagent so that
+# plan/stuck/complete reviews receive compact checkpoint context rather than
+# automatically inheriting the entire primary conversation.
+#
+# Claude's native full-session advisor remains optional/manual.

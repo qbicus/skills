@@ -7,6 +7,7 @@ Follow:
 - `.ai/project-overview.md`
 - `.ai/current-work.md`
 - `.ai/decisions.md`
+- `.ai/providers/README.md` and `.ai/providers/claude.yml` when present
 
 Use global skills from:
 

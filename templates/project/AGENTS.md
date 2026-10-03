@@ -28,6 +28,7 @@ Read project context from:
 - `.ai/testing.md`
 - `.ai/deployment.md`
 - `.ai/test-cases/README.md`
+- `.ai/providers/README.md` (and provider override files when present)
 
 ## Rules
 
@@ -42,6 +43,8 @@ Read project context from:
 - For new features, use the `new-feature` workflow unless the user asks for a lighter process.
 - For debugging, use the `debug` workflow.
 - For code reviews, use the `code-review` workflow.
+- Apply repository provider overrides from `.ai/providers/<provider>.yml` over the global provider policy when present.
+- Keep parallel execution plan-controlled; do not auto-fan-out unapproved work.
 
 ## Tester-facing test cases
 

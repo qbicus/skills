@@ -9,6 +9,8 @@ Start with evidence, not code edits. Read logs first, identify patterns, narrow 
 
 Use the structure in [references/debug-template.md](references/debug-template.md) when a written investigation record or consistent response shape would help.
 
+Use provider roles intentionally: `executor` for bounded log/code investigation and focused fixes, `researcher` for external docs/vendor behavior, `primary` for material diagnosis/architecture decisions, and `advisor` for repeated-failure or substantial-completion checkpoints.
+
 ## Workflow
 
 1. Identify the failure surface
@@ -36,6 +38,7 @@ Use the structure in [references/debug-template.md](references/debug-template.md
 - Read only the code paths implicated by the log evidence and hypotheses.
 - Verify whether the code can actually produce the observed failure.
 - Drop hypotheses that do not fit the evidence.
+- Track substantially identical failure recurrence. When it reaches the effective provider's `behavior.advisor.repeatedFailureThreshold` (resolve the merged provider config; use the framework provider helper when available), invoke `advisor` in `stuck` mode before another materially similar attempt.
 
 6. Fix only after the failure mode is understood
 - Propose or apply the smallest change that addresses the validated root cause.
@@ -46,6 +49,8 @@ Use the structure in [references/debug-template.md](references/debug-template.md
 - Re-run the relevant build, test, or focused verification path when feasible.
 - Confirm that the original log pattern is resolved or would be prevented by the change.
 - State what was verified and what remains unverified.
+- Explicitly classify the debugging effort as `substantial: true|false` once scope is understood. Treat multi-component, production-impacting, migration/config-boundary, or prolonged investigations as substantial by default.
+- For `substantial: true`, invoke `advisor` in `complete` mode before declaring the debugging task complete.
 
 ## Evidence Rules
 

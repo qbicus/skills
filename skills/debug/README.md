@@ -11,6 +11,8 @@ Default behavior:
 - read logs before suggesting fixes
 - separate root cause from downstream noise
 - verify against the original failure pattern
+- invoke `advisor:stuck` when the same failure reaches the configured threshold (default 2)
+- classify the investigation as `substantial: true|false` and completion-check substantial debugging work
 
 Example prompts:
 - `Use $debug to inspect the production logs for this crash and identify the root cause before changing code.`

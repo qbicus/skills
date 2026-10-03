@@ -9,6 +9,8 @@ Review code with a low-noise, context-aware workflow. Validate each candidate fi
 
 Use the structure in [references/review-template.md](references/review-template.md) when a written review artifact or a consistent response shape would help.
 
+Use `executor` for bounded code/test inspection and straightforward fixes, `researcher` for external compatibility/security evidence, and `primary` for material architecture or contract judgments. Use the reusable `advisor` only when an independent second opinion is explicitly requested or a parent substantial workflow requires the checkpoint; do not recursively invoke it for every ordinary review.
+
 ## Workflow
 
 1. Establish review scope

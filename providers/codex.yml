@@ -1,0 +1,66 @@
+version: 1
+provider: codex
+
+# Shared skills refer to roles, never concrete models.
+# Repository overrides may replace any value from:
+# <repo>/.ai/providers/codex.yml
+
+roles:
+  primary:
+    model: gpt-6-astra
+    effort: high
+    fallbackModels:
+      - gpt-6-sol
+      - gpt-5.6-sol
+
+  executor:
+    model: gpt-5.6-sol
+    effort: medium
+    fallbackModels:
+      - gpt-6-sol
+      - gpt-6-astra
+
+  researcher:
+    model: gpt-5.6-sol
+    effort: medium
+    fallbackModels:
+      - gpt-6-sol
+      - gpt-6-astra
+
+  advisor:
+    model: gpt-5.6-sol
+    effort: medium
+    fallbackRoles:
+      - executor
+      - primary
+
+  fast:
+    model: gpt-6-luna
+    effort: low
+    fallbackRoles:
+      - executor
+      - primary
+
+behavior:
+  advisor:
+    repeatedFailureThreshold: 2
+    completionCheck: substantial-only
+    planCheck: substantial-only
+
+  execution:
+    workerScope: bounded
+    parallelMode: plan-only
+    maxConcurrentAgents: 4
+
+  workClassification:
+    defaultSubstantial: false
+
+runtime:
+  automaticDetection: true
+  explicitProviderOverrideEnvironmentVariable: AI_PROVIDER
+  repositoryOverridePath: .ai/providers/codex.yml
+  nativeAgentPrefix: ai-
+
+# Runtime note:
+# The framework renderer turns this policy into Codex custom-agent TOML plus a
+# config fragment. generated/codex is machine-local runtime state.

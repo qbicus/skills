@@ -5,6 +5,7 @@
 - `nf-tasks` (used by `new-feature`)
 - `nf-avalonia` (used by `new-feature`)
 - `decision` (standalone, used by `new-feature`, `session-close`)
+- `advisor` (standalone/manual, used by substantial workflows and repeated-failure checkpoints)
 - `modernize-eval` (standalone)
 - `modernize-plan` (standalone, used after `modernize-eval`)
 - `parallel-exec` (standalone, used by `new-feature`, `modernize-plan`)
@@ -26,7 +27,7 @@ Also uses `decision` for important decisions and `nf-avalonia` when the feature 
 
 ### `nf-spec`
 Specification stage for `new-feature`.
-Creates the implementation-ready feature spec, including requirements, contracts, validation rules, phasing, and parallel-execution preference.
+Creates the implementation-ready feature spec, including requirements, contracts, validation rules, phasing, explicit `substantial: true|false` classification, and parallel-execution preference.
 
 ### `nf-design`
 Design stage for `new-feature`.
@@ -34,11 +35,14 @@ Turns the approved spec into a file-by-file implementation design with architect
 
 ### `nf-tasks`
 Task-planning stage for `new-feature`.
-Breaks the approved design into ordered tasks, marks sequential vs parallel-safe work, assigns agent slots when needed, applies the quality checklist, and keeps `dev-todos.md` usable as a live execution tracker.
+Breaks the approved design into ordered tasks, assigns provider-neutral execution roles, marks sequential vs parallel-safe work, assigns agent slots when needed, applies the quality checklist, and keeps `dev-todos.md` usable as a live execution tracker.
 
 ### `nf-avalonia`
 Support skill for Avalonia desktop UI work inside `new-feature`.
 Adds Avalonia-specific guidance for spec, design, task planning, and execution without replacing the main approval chain.
+
+### `advisor`
+Independent checkpoint reviewer for substantial plans, repeated failures, and substantial completion checks. Supports `plan`, `stuck`, and `complete` modes and can also be invoked manually.
 
 ### `decision`
 Standalone running decision log.
