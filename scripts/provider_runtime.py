@@ -11,6 +11,9 @@ from typing import Any, Iterable
 
 FRAMEWORK_ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED_PROVIDERS = ("codex", "claude")
+SUPPORTED_PROFILES = ("low", "medium", "high")
+DEFAULT_PROFILE = "medium"
+ACTIVE_PROFILES_RELATIVE_PATH = Path("local") / "provider-profiles.json"
 SUPPORTED_ROLES = ("primary", "executor", "researcher", "advisor", "fast")
 EFFORT_LEVELS = {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
 
@@ -163,6 +166,79 @@ def detect_provider(explicit: str | None = None, env: dict[str, str] | None = No
     return None, "not detected"
 
 
+def load_saved_profiles(framework_root: Path = FRAMEWORK_ROOT) -> dict[str, str]:
+    path = framework_root / ACTIVE_PROFILES_RELATIVE_PATH
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ProviderConfigError(f"Invalid saved provider profile state in {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ProviderConfigError(f"Saved provider profile state must be a JSON object: {path}")
+    profiles = data.get("profiles", data)
+    if not isinstance(profiles, dict):
+        raise ProviderConfigError(f"Saved provider profile state must contain a profiles mapping: {path}")
+    result: dict[str, str] = {}
+    for provider, profile in profiles.items():
+        if provider in SUPPORTED_PROVIDERS and isinstance(profile, str):
+            normalized = profile.strip().lower()
+            if normalized not in SUPPORTED_PROFILES:
+                raise ProviderConfigError(
+                    f"Saved profile for {provider} is '{profile}', expected one of: {', '.join(SUPPORTED_PROFILES)}."
+                )
+            result[provider] = normalized
+    return result
+
+
+def save_profile(provider: str, profile: str, framework_root: Path = FRAMEWORK_ROOT) -> Path:
+    if provider not in SUPPORTED_PROVIDERS:
+        raise ProviderConfigError(f"Unsupported provider: {provider}")
+    if profile not in SUPPORTED_PROFILES:
+        raise ProviderConfigError(
+            f"Unsupported profile '{profile}'. Expected one of: {', '.join(SUPPORTED_PROFILES)}."
+        )
+    path = framework_root / ACTIVE_PROFILES_RELATIVE_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    current = load_saved_profiles(framework_root)
+    current[provider] = profile
+    payload = {"version": 1, "profiles": current}
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def detect_profile(
+    explicit: str | None = None,
+    env: dict[str, str] | None = None,
+    provider: str | None = None,
+    framework_root: Path = FRAMEWORK_ROOT,
+) -> tuple[str, str]:
+    env = env or dict(os.environ)
+    if explicit:
+        candidate = explicit.strip().lower()
+        source = "explicit argument"
+    elif env.get("AI_PROFILE"):
+        candidate = env["AI_PROFILE"].strip().lower()
+        source = "AI_PROFILE"
+    elif provider:
+        saved = load_saved_profiles(framework_root).get(provider)
+        candidate = saved or DEFAULT_PROFILE
+        source = "saved profile" if saved else "default"
+    else:
+        candidate = DEFAULT_PROFILE
+        source = "default"
+    if candidate not in SUPPORTED_PROFILES:
+        raise ProviderConfigError(
+            f"Unsupported profile '{candidate}'. Expected one of: {', '.join(SUPPORTED_PROFILES)}."
+        )
+    return candidate, source
+
+
+def provider_profile_path(framework_root: Path, provider: str, profile: str) -> Path:
+    filename = f"{provider}.yml" if profile == DEFAULT_PROFILE else f"{provider}.{profile}.yml"
+    return framework_root / "providers" / filename
+
+
 def find_repo_root(start: Path | None = None) -> Path:
     current = (start or Path.cwd()).resolve()
     for candidate in (current, *current.parents):
@@ -174,9 +250,11 @@ def find_repo_root(start: Path | None = None) -> Path:
 @dataclass(frozen=True)
 class EffectiveConfig:
     provider: str
+    profile: str
     config: dict[str, Any]
     global_path: Path
     repo_path: Path | None
+    profile_repo_path: Path | None
     sources: tuple[Path, ...]
 
 
@@ -185,6 +263,9 @@ def validate_config(config: dict[str, Any], provider: str | None = None) -> list
     declared = config.get("provider")
     if provider and declared not in {None, provider}:
         errors.append(f"provider must be '{provider}', found '{declared}'")
+    declared_profile = config.get("profile")
+    if declared_profile is not None and declared_profile not in SUPPORTED_PROFILES:
+        errors.append(f"profile must be one of {', '.join(SUPPORTED_PROFILES)}, found '{declared_profile}'")
     version = config.get("version")
     if version != 1:
         errors.append("version must be 1")
@@ -242,26 +323,58 @@ def load_effective_config(
     provider: str,
     repo_root: Path | None = None,
     framework_root: Path = FRAMEWORK_ROOT,
+    profile: str = DEFAULT_PROFILE,
 ) -> EffectiveConfig:
     if provider not in SUPPORTED_PROVIDERS:
         raise ProviderConfigError(f"Unsupported provider: {provider}")
-    global_path = framework_root / "providers" / f"{provider}.yml"
+    if profile not in SUPPORTED_PROFILES:
+        raise ProviderConfigError(
+            f"Unsupported profile '{profile}'. Expected one of: {', '.join(SUPPORTED_PROFILES)}."
+        )
+
+    global_path = provider_profile_path(framework_root, provider, profile)
     base = load_yaml(global_path)
+    base_profile = base.get("profile")
+    if base_profile is not None and base_profile != profile:
+        raise ProviderConfigError(
+            f"Provider profile mismatch in {global_path}: expected '{profile}', found '{base_profile}'."
+        )
+
     repo = (repo_root or find_repo_root()).resolve()
-    repo_path = repo / ".ai" / "providers" / f"{provider}.yml"
+    generic_repo_path = repo / ".ai" / "providers" / f"{provider}.yml"
+    profile_repo_path = repo / ".ai" / "providers" / f"{provider}.{profile}.yml"
     sources: list[Path] = [global_path]
     merged = base
     used_repo: Path | None = None
-    if repo_path.exists() and repo_path.resolve() != global_path.resolve():
-        merged = deep_merge(base, load_yaml(repo_path))
-        sources.append(repo_path)
-        used_repo = repo_path
+    used_profile_repo: Path | None = None
+
+    # The generic repo override applies to every profile. A profile-specific
+    # override, when present, is applied last and therefore wins. This keeps
+    # existing <repo>/.ai/providers/<provider>.yml behavior backward-compatible.
+    if generic_repo_path.exists() and generic_repo_path.resolve() != global_path.resolve():
+        merged = deep_merge(merged, load_yaml(generic_repo_path))
+        sources.append(generic_repo_path)
+        used_repo = generic_repo_path
+
+    if (
+        profile_repo_path.exists()
+        and profile_repo_path.resolve() != global_path.resolve()
+        and profile_repo_path.resolve() != generic_repo_path.resolve()
+    ):
+        merged = deep_merge(merged, load_yaml(profile_repo_path))
+        sources.append(profile_repo_path)
+        used_profile_repo = profile_repo_path
+
+    # Runtime selection remains authoritative even if a generic repo override
+    # was copied from another profile and contains a stale profile label.
+    merged["provider"] = provider
+    merged["profile"] = profile
+
     errors = validate_config(merged, provider)
     if errors:
         joined = "\n  - ".join(errors)
-        raise ProviderConfigError(f"Invalid effective {provider} provider config:\n  - {joined}")
-    return EffectiveConfig(provider, merged, global_path, used_repo, tuple(sources))
-
+        raise ProviderConfigError(f"Invalid effective {provider}/{profile} provider config:\n  - {joined}")
+    return EffectiveConfig(provider, profile, merged, global_path, used_repo, used_profile_repo, tuple(sources))
 
 def _ordered_role_candidates(config: dict[str, Any], role: str) -> list[tuple[str, str, str | None]]:
     if role not in SUPPORTED_ROLES:
@@ -439,6 +552,7 @@ def render_codex_native(effective: EffectiveConfig, output: Path, available_mode
     max_agents = effective.config.get("behavior", {}).get("execution", {}).get("maxConcurrentAgents", 4)
     fragment = [
         "# Generated by ~/.ai/scripts/ai.py provider --render-native.",
+        f"# Provider/profile: {effective.provider}/{effective.profile}",
         "# Merge intentionally; the installer must preserve unrelated Codex config.",
         f"model = {_toml_quote(str(primary['model']))}",
     ]
@@ -560,6 +674,7 @@ def render_native(effective: EffectiveConfig, output: Path, available_models: It
 def effective_summary(effective: EffectiveConfig) -> dict[str, Any]:
     return {
         "provider": effective.provider,
+        "profile": effective.profile,
         "sources": [str(p) for p in effective.sources],
         "roles": {
             role: resolve_role(effective.config, role)

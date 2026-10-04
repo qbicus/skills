@@ -1,6 +1,6 @@
 # AI Framework — Remaining Work
 
-Status: **Codex runtime/E2E largely verified — small Codex checks + deferred Claude E2E + installer pending**
+Status: **Codex runtime/E2E verified, profile-aware routing added — deferred Claude E2E + installer pending**
 
 
 > 2026-10-04 update: provider routing, native Codex/Claude agent generation, strict runtime fallback orchestration, substantial-work advisor checkpoints, bounded workers, and plan-controlled parallel execution are implemented. Live Codex validation now covers native role invocation, model fallback, substantial `new-feature`, researcher/executor delegation, advisor plan/completion checkpoints, and explicit parallel execution. Claude implementation remains statically validated but live E2E is intentionally deferred to avoid company-limit usage. Installation/update lifecycle remains owned by `INSTALLER.md`.
@@ -9,14 +9,16 @@ This checklist tracks the remaining work after the provider-neutral role model, 
 
 ## 1. Runtime provider routing
 
-- [x] Implement runtime loading of `providers/codex.yml`.
-- [x] Implement runtime loading of `providers/claude.yml`.
+- [x] Implement runtime loading of Codex `low` / `medium` / `high` provider profiles.
+- [x] Implement runtime loading of Claude `low` / `medium` / `high` provider profiles.
+- [x] Keep `medium` as the default/recommended profile (`codex.yml` / `claude.yml`).
+- [x] Support temporary profile selection with `--profile` / `AI_PROFILE` and persistent per-provider selection with `--set-profile`.
 - [x] Detect the active provider automatically where possible.
 - [x] Support an explicit provider override for testing/debugging.
-- [x] Resolve provider configuration in this order:
-  1. repository override: `<repo>/.ai/providers/<provider>.yml`
-  2. global config: `~/.ai/providers/<provider>.yml`
-  3. framework defaults
+- [x] Resolve provider/profile configuration in this order:
+  1. selected global profile (`<provider>.yml` for medium, `<provider>.low.yml` / `<provider>.high.yml`)
+  2. generic repository override: `<repo>/.ai/providers/<provider>.yml`
+  3. profile-specific repository override: `<repo>/.ai/providers/<provider>.<profile>.yml`
 - [x] Allow repo overrides to change both model mappings and orchestration settings.
 - [x] Validate provider config schema and report invalid values clearly.
 
@@ -216,6 +218,8 @@ ai.py help
 - [ ] Replace installation placeholder once installer work is complete.
 - [x] Document runtime role routing after native Codex/Claude integration exists.
 - [x] Document provider detection and explicit override.
+- [x] Document low/medium/high usage profiles.
+- [x] Document `AI_PROFILE` / `--profile` / `--set-profile` selection and profile-specific repo overrides.
 - [x] Document fallbacks.
 - [x] Document repo overrides.
 - [x] Document manual advisor invocation.
@@ -229,9 +233,9 @@ ai.py help
   - [x] `parallel-exec` *(Codex plan-controlled parallel flow verified; document it)*  
   - [ ] `code-review`
   - [x] `advisor` checkpoints through `new-feature`
-  - [ ] `advisor` manual invocation
-  - [ ] repo-level provider override
-  - [x ] fallback behavior within the real `new-feature` run
+  - [x] `advisor` manual invocation
+  - [x] repo-level provider override
+  - [x] fallback behavior within the real `new-feature` run
 - [x] Ensure all available skills are listed in both README and HELP.
 - [x] Ensure command examples match the actual helper/installer commands.
 
@@ -247,9 +251,9 @@ ai.py help
 - [x] Verify `executor` routing. *(Verified live; bounded executor work plus configured fallback after a usage-limit failure.)*
 - [x] Verify `researcher` routing. *(Verified live during toolchain compatibility research.)*
 - [x] Verify `fast` routing on an appropriate low-risk fork.
-- [ ] Verify repeated failure threshold triggers `advisor:stuck` at `2`.
-- [ ] Verify repo override changes the effective role mapping.
-- [ ] Verify manual advisor invocation in a small standalone review.
+- [x] Verify repeated failure threshold triggers `advisor:stuck` at `2`. *(Verified live in DateDashboard controlled fail-fast debug run.)*
+- [x] Verify repo override changes the effective role mapping. *(Verified live: repo override changed only `fast.effort` while inherited model/other roles remained intact.)*
+- [x] Verify manual advisor invocation in a small standalone review. *(Verified live; advisor returned `OK` in read-only review.)*
 - [x] Verify fallback model is used when the preferred model is unavailable.
 - [x] Verify parallel execution occurs only when the plan explicitly permits it. *(Verified live: only the approved T002/T003 batch ran in parallel; remaining implementation stayed sequential.)*
 
@@ -295,7 +299,7 @@ See `INSTALLER.md` for the installer-specific checklist.
 - [x] Parallel execution occurs only when explicitly permitted by the approved plan.
 - [x] Codex substantial `new-feature`, executor, researcher, fallback, and parallel paths have live E2E evidence.
 - [x] Codex non-substantial flow confirms unnecessary advisor checkpoints are skipped.
-- [ ] Codex repeated implementation failure triggers `advisor:stuck` at threshold `2`.
+- [x] Codex repeated implementation failure triggers `advisor:stuck` at threshold `2`.
 - [ ] Codex repo-local provider override is verified live.
 - [ ] Manual advisor invocation is verified live.
 - [ ] README/HELP are refreshed with final verified examples.

@@ -1,36 +1,33 @@
 version: 1
 provider: codex
-profile: medium
+profile: low
 
-# Shared skills refer to roles, never concrete models.
-# Repository overrides may replace any value from:
-# <repo>/.ai/providers/codex.yml
-
+# Lower-usage profile. Use when quota/token consumption matters more than
+# maximum reasoning depth. Shared skills still request provider-neutral roles.
 roles:
   primary:
-    model: gpt-6-astra
-    effort: high
-    fallbackModels:
-      - gpt-6-sol
-      - gpt-5.6-sol
-
-  executor:
     model: gpt-5.6-sol
     effort: medium
     fallbackModels:
-      - gpt-6-sol
+      - gpt-6-astra
+
+  executor:
+    model: gpt-5.6-sol
+    effort: low
+    fallbackModels:
+      - gpt-6-luna
       - gpt-6-astra
 
   researcher:
     model: gpt-5.6-sol
-    effort: medium
+    effort: low
     fallbackModels:
-      - gpt-6-sol
+      - gpt-6-luna
       - gpt-6-astra
 
   advisor:
     model: gpt-5.6-sol
-    effort: medium
+    effort: low
     fallbackRoles:
       - executor
       - primary
@@ -51,7 +48,7 @@ behavior:
   execution:
     workerScope: bounded
     parallelMode: plan-only
-    maxConcurrentAgents: 4
+    maxConcurrentAgents: 2
 
   workClassification:
     defaultSubstantial: false
@@ -64,7 +61,3 @@ runtime:
   repositoryOverridePath: .ai/providers/codex.yml
   repositoryProfileOverridePath: .ai/providers/codex.{profile}.yml
   nativeAgentPrefix: ai-
-
-# Runtime note:
-# The framework renderer turns this policy into Codex custom-agent TOML plus a
-# config fragment. generated/codex is machine-local runtime state.

@@ -27,23 +27,35 @@ and be exposed to Claude's skill location without replacing Claude-managed or th
 
 ## Provider routing
 
-Global Claude routing policy:
+Global Claude routing profiles:
 
 ```text
-~/.ai/providers/claude.yml
+~/.ai/providers/claude.yml          # medium/default
+~/.ai/providers/claude.low.yml
+~/.ai/providers/claude.high.yml
 ```
 
-Optional repository override:
+Select `low`, `medium`, or `high` with `--profile` or `AI_PROFILE`; `medium` is the default/recommended profile.
+
+Optional repository overrides:
 
 ```text
-<repo>/.ai/providers/claude.yml
+<repo>/.ai/providers/claude.yml                 # applies to every profile
+<repo>/.ai/providers/claude.<profile>.yml       # applies only to selected profile
+```
+
+Persist the normal Claude profile when desired:
+
+```bash
+python ~/.ai/scripts/ai.py provider --provider claude --set-profile medium
 ```
 
 Inspect the effective routing:
 
 ```bash
 python ~/.ai/scripts/ai.py provider --provider claude --effective
-python ~/.ai/scripts/ai.py provider --provider claude --validate
+python ~/.ai/scripts/ai.py provider --provider claude --profile low --effective
+python ~/.ai/scripts/ai.py provider --provider claude --profile high --validate
 python ~/.ai/scripts/ai.py provider --provider claude --role executor
 ```
 
@@ -65,6 +77,7 @@ Generate global-default native files:
 ```bash
 python ~/.ai/scripts/ai.py provider \
   --provider claude \
+  --profile medium \
   --render-native ~/.ai/generated/claude
 ```
 
@@ -73,6 +86,7 @@ Generate with a repository override:
 ```bash
 python ~/.ai/scripts/ai.py provider \
   --provider claude \
+  --profile low \
   --repo /path/to/repo \
   --render-native ~/.ai/generated/claude
 ```
@@ -98,7 +112,7 @@ This is intentional: Claude's native advisor tool receives the **full conversati
 
 The provider still records the preferred/current advisor model so the installer or user can opt into native advisor behavior separately.
 
-Current Claude documentation also states that Fable is temporarily unavailable as a native advisor selection. The provider therefore uses `opus` for the current advisor role while retaining `preferredWhenAvailable: fable` as policy metadata.
+The portable framework `ai-advisor` model depends on the selected usage profile (Sonnet for low/medium, Opus for high in the current defaults). Claude's native full-session advisor remains optional/manual and separate from this checkpoint routing.
 
 ## Tool boundaries
 
@@ -117,6 +131,6 @@ Claude supports concurrent subagents, but framework parallelism remains **plan-c
 
 ## Current limitation
 
-The native files are generated but are not automatically merged into `~/.claude/settings.json` or `~/.claude/agents/` yet. That safe install/update/uninstall work belongs to `INSTALLER.md`.
+The native files are generated but are not automatically merged into `~/.claude/settings.json` or `~/.claude/agents/` yet. That safe install/update/uninstall work belongs to `INSTALLER.md`. After changing profiles, re-render/re-sync the native files; changing `AI_PROFILE` alone does not rewrite existing generated subagents.
 
 For full usage see `README.md`, `HELP.md`, and `docs/model-routing.md`.

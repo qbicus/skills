@@ -1,33 +1,31 @@
 version: 1
 provider: claude
-profile: medium
+profile: low
 
-# Shared skills refer to roles, never concrete models.
-# Repository overrides may replace any value from:
-# <repo>/.ai/providers/claude.yml
-
+# Lower-usage profile. Keeps Sonnet as the main capable model and lowers effort
+# and concurrency while retaining Haiku for trivial routing.
 roles:
   primary:
-    model: opus
-    effort: high
+    model: sonnet
+    effort: medium
     fallbackModels:
-      - sonnet
+      - opus
 
   executor:
     model: sonnet
-    effort: medium
+    effort: low
     fallbackModels:
       - opus
 
   researcher:
     model: sonnet
-    effort: medium
+    effort: low
     fallbackModels:
       - opus
 
   advisor:
     model: sonnet
-    effort: medium
+    effort: low
     fallbackRoles:
       - executor
       - primary
@@ -48,7 +46,7 @@ behavior:
   execution:
     workerScope: bounded
     parallelMode: plan-only
-    maxConcurrentAgents: 4
+    maxConcurrentAgents: 2
 
   workClassification:
     defaultSubstantial: false
@@ -61,9 +59,3 @@ runtime:
   repositoryOverridePath: .ai/providers/claude.yml
   repositoryProfileOverridePath: .ai/providers/claude.{profile}.yml
   nativeAgentPrefix: ai-
-
-# Framework advisor checkpoints use the isolated ai-advisor subagent so that
-# plan/stuck/complete reviews receive compact checkpoint context rather than
-# automatically inheriting the entire primary conversation.
-#
-# Claude's native full-session advisor remains optional/manual.

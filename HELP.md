@@ -6,8 +6,12 @@ Quick operator reference. See `README.md` for full documentation.
 
 ```text
 ~/.ai/AGENTS.md                  shared agent rules
-~/.ai/providers/codex.yml       Codex routing defaults
-~/.ai/providers/claude.yml      Claude routing defaults
+~/.ai/providers/codex.yml       Codex medium/default routing
+~/.ai/providers/codex.low.yml   Codex lower-usage profile
+~/.ai/providers/codex.high.yml  Codex quality-first profile
+~/.ai/providers/claude.yml      Claude medium/default routing
+~/.ai/providers/claude.low.yml  Claude lower-usage profile
+~/.ai/providers/claude.high.yml Claude quality-first profile
 ~/.ai/skills/                   reusable workflows
 <repo>/.ai/providers/*.yml      optional repository overrides
 ```
@@ -31,6 +35,26 @@ $env:AI_PROVIDER = "codex"
 ```bash
 export AI_PROVIDER=claude
 ```
+
+Usage profile defaults to `medium`. Override temporarily with:
+
+```powershell
+$env:AI_PROFILE = "low"
+```
+
+or per command:
+
+```powershell
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --profile high --effective
+```
+
+Persist the usual profile for a provider:
+
+```powershell
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --set-profile low
+```
+
+`low` conserves usage, `medium` is recommended/default, and `high` favors quality for difficult work.
 
 ## Main skills
 
@@ -111,7 +135,9 @@ python "$env:USERPROFILE\.ai\scripts\ai.py" help
 python "$env:USERPROFILE\.ai\scripts\ai.py" skills
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --effective
-python "$env:USERPROFILE\.ai\scripts\ai.py" provider --validate
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --profile low --effective
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --profile high --validate
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --set-profile medium
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --role executor
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --diagnose
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --get behavior.advisor.repeatedFailureThreshold
@@ -127,7 +153,7 @@ python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider claude --render-
 
 Add `--repo <repo-root>` to include repository overrides. Generated role agents are `ai-executor`, `ai-researcher`, `ai-advisor`, and `ai-fast`; `primary` remains the owning thread.
 
-To test fallback selection, repeat `--available-model <model>` with `--role` or `--render-native`.
+To test fallback selection, repeat `--available-model <model>` with `--role` or `--render-native`. To switch cost/quality posture, add `--profile low|medium|high`; re-render native files after changing the profile.
 
 ## Project init
 

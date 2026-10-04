@@ -1,11 +1,9 @@
 version: 1
 provider: claude
-profile: medium
+profile: high
 
-# Shared skills refer to roles, never concrete models.
-# Repository overrides may replace any value from:
-# <repo>/.ai/providers/claude.yml
-
+# Quality-first profile for difficult work. Opus owns primary decisions and the
+# independent advisor; Sonnet runs implementation/research at high effort.
 roles:
   primary:
     model: opus
@@ -15,19 +13,19 @@ roles:
 
   executor:
     model: sonnet
-    effort: medium
+    effort: high
     fallbackModels:
       - opus
 
   researcher:
     model: sonnet
-    effort: medium
+    effort: high
     fallbackModels:
       - opus
 
   advisor:
-    model: sonnet
-    effort: medium
+    model: opus
+    effort: high
     fallbackRoles:
       - executor
       - primary
@@ -61,9 +59,3 @@ runtime:
   repositoryOverridePath: .ai/providers/claude.yml
   repositoryProfileOverridePath: .ai/providers/claude.{profile}.yml
   nativeAgentPrefix: ai-
-
-# Framework advisor checkpoints use the isolated ai-advisor subagent so that
-# plan/stuck/complete reviews receive compact checkpoint context rather than
-# automatically inheriting the entire primary conversation.
-#
-# Claude's native full-session advisor remains optional/manual.

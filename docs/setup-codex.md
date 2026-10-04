@@ -31,16 +31,27 @@ through Codex's native skill mechanism. Leave Codex-owned and third-party skills
 
 ## Provider routing
 
-Global Codex routing policy:
+Global Codex routing profiles:
 
 ```text
-%USERPROFILE%\.ai\providers\codex.yml
+%USERPROFILE%\.ai\providers\codex.yml          # medium/default
+%USERPROFILE%\.ai\providers\codex.low.yml
+%USERPROFILE%\.ai\providers\codex.high.yml
 ```
 
-Optional repository override:
+Select `low`, `medium`, or `high` with `--profile` or `AI_PROFILE`; `medium` is the default/recommended profile.
+
+Optional repository overrides:
 
 ```text
-<repo>\.ai\providers\codex.yml
+<repo>\.ai\providers\codex.yml                 # applies to every profile
+<repo>\.ai\providers\codex.<profile>.yml       # applies only to selected profile
+```
+
+Persist the normal Codex profile when desired:
+
+```powershell
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --set-profile low
 ```
 
 Shared skills request the provider-neutral roles `primary`, `executor`, `researcher`, `advisor`, and `fast`.
@@ -49,7 +60,8 @@ Effective config and fallback resolution can be inspected now:
 
 ```powershell
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --effective
-python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --validate
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --profile low --effective
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --profile high --validate
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --role executor
 ```
 
@@ -71,6 +83,7 @@ Generate the native files for the global defaults:
 ```powershell
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider `
   --provider codex `
+  --profile medium `
   --render-native "$env:USERPROFILE\.ai\generated\codex"
 ```
 
@@ -79,6 +92,7 @@ Generate them using a repository override:
 ```powershell
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider `
   --provider codex `
+  --profile low `
   --repo "D:\Work\MyRepo" `
   --render-native "$env:USERPROFILE\.ai\generated\codex"
 ```
@@ -93,7 +107,7 @@ agents/ai-advisor.toml
 agents/ai-fast.toml
 ```
 
-The renderer intentionally does **not** write into `~/.codex`. The installer will own safe merge/update/uninstall and preserve unrelated Codex settings and agents.
+The renderer intentionally does **not** write into `~/.codex`. The installer will own safe merge/update/uninstall and preserve unrelated Codex settings and agents. After changing profiles, re-render/re-sync the native files; changing `AI_PROFILE` alone does not rewrite existing generated agents.
 
 ### Fallback testing
 

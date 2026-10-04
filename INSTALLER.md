@@ -141,6 +141,26 @@ Non-interactive mode:
 --target both
 ```
 
+## 6A. Usage-profile selection
+
+For each selected client:
+
+- [ ] Offer `low`, `medium`, or `high`.
+- [ ] Default/recommend `medium`.
+- [ ] Explain `low` as quota/usage-saving and `high` as quality-first.
+- [ ] Persist the installer-selected active profile in installer state and `~/.ai/local/provider-profiles.json` (or via `ai.py provider --set-profile`).
+- [ ] Allow different profiles for Codex and Claude when target is `both`.
+- [ ] During **Update / Repair**, allow keeping the current profile or switching profiles.
+- [ ] Re-render native client wiring whenever the selected profile changes.
+- [ ] Preserve repo-local generic/profile-specific overrides.
+
+Non-interactive examples should support an explicit profile, for example:
+
+```text
+--target codex --profile medium
+--target both --codex-profile low --claude-profile medium
+```
+
 ## 7. Canonical global framework location
 
 - [ ] Confirm canonical shared framework path under the user's home directory.
@@ -157,9 +177,13 @@ Non-interactive mode:
 - [ ] Support a force-repair switch later if needed, without creating a separate reinstall lifecycle.
 - [ ] Make **Update / Repair** idempotent and safe to run repeatedly.
 - [ ] Do not duplicate skill registrations or config blocks.
-- [ ] Install/update provider configs:
-  - `providers/codex.yml`
-  - `providers/claude.yml`
+- [ ] Install/update all provider usage profiles:
+  - `providers/codex.yml` (medium/default)
+  - `providers/codex.low.yml`
+  - `providers/codex.high.yml`
+  - `providers/claude.yml` (medium/default)
+  - `providers/claude.low.yml`
+  - `providers/claude.high.yml`
 - [ ] Install/update shared skills, including `advisor`.
 - [ ] Install/update helper scripts.
 - [ ] Install/update `README.md` and `HELP.md`.

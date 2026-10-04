@@ -42,19 +42,29 @@ They request one of five roles:
 | `advisor` | Independent plan/stuck/completion review |
 | `fast` | Trivial low-risk routing/mechanical decisions |
 
-Provider files map those roles to concrete models:
+Provider profiles map those roles to concrete models and effort levels. `medium` is the default/recommended profile:
 
 ```text
-~/.ai/providers/codex.yml
-~/.ai/providers/claude.yml
+~/.ai/providers/codex.yml          # medium (default)
+~/.ai/providers/codex.low.yml
+~/.ai/providers/codex.high.yml
+~/.ai/providers/claude.yml         # medium (default)
+~/.ai/providers/claude.low.yml
+~/.ai/providers/claude.high.yml
 ```
+
+Use `low` when usage/quota pressure matters more than maximum reasoning depth, `medium` for normal work, and `high` for difficult work where quality justifies higher usage.
 
 Repositories may override either provider under:
 
 ```text
 <repo>/.ai/providers/codex.yml
 <repo>/.ai/providers/claude.yml
+<repo>/.ai/providers/codex.<profile>.yml     # optional profile-specific override
+<repo>/.ai/providers/claude.<profile>.yml    # optional profile-specific override
 ```
+
+The generic repo override applies to every profile; a profile-specific repo override applies last.
 
 See [Provider-aware model routing](docs/model-routing.md) for merge order, fallbacks, behavioral settings, and runtime notes.
 
@@ -87,16 +97,19 @@ Global framework instructions are in:
 ~/.ai/AGENTS.md
 ```
 
-Provider routing policy is in:
+Provider routing profiles are in:
 
 ```text
-~/.ai/providers/codex.yml
+~/.ai/providers/codex.yml          # medium/default
+~/.ai/providers/codex.low.yml
+~/.ai/providers/codex.high.yml
 ```
 
 Repository overrides are read conceptually from:
 
 ```text
 <repo>/.ai/providers/codex.yml
+<repo>/.ai/providers/codex.<profile>.yml
 ```
 
 The framework can now resolve effective Codex routing and render native Codex custom-agent/config fragments. The installer is still responsible for safely merging those fragments into `~/.codex` while preserving unrelated configuration. See [`docs/setup-codex.md`](docs/setup-codex.md).
@@ -129,30 +142,35 @@ with an import pointing to:
 ~/.ai/CLAUDE.md
 ```
 
-Provider routing policy is in:
+Provider routing profiles are in:
 
 ```text
-~/.ai/providers/claude.yml
+~/.ai/providers/claude.yml         # medium/default
+~/.ai/providers/claude.low.yml
+~/.ai/providers/claude.high.yml
 ```
 
 Repository overrides are read from:
 
 ```text
 <repo>/.ai/providers/claude.yml
+<repo>/.ai/providers/claude.<profile>.yml
 ```
 
-Claude Code supports native model-specific subagents. The framework now renders `ai-executor`, `ai-researcher`, `ai-advisor`, and `ai-fast` definitions with model/effort/tool boundaries from the effective provider config. Claude's native advisor remains optional rather than the framework checkpoint default because it receives the full conversation; framework checkpoints use the compact-context `ai-advisor`. As of 2026-10-03, Fable is documented as temporarily unavailable as a native advisor choice, so the checked-in policy uses `opus` now and records Fable as preferred when available again. See [`docs/setup-claude.md`](docs/setup-claude.md).
+Claude Code supports native model-specific subagents. The framework renders `ai-executor`, `ai-researcher`, `ai-advisor`, and `ai-fast` definitions with model/effort/tool boundaries from the selected profile and effective provider config. Claude's native full-session advisor remains optional rather than the framework checkpoint default because it receives the full conversation; framework checkpoints use the compact-context `ai-advisor`. See [`docs/setup-claude.md`](docs/setup-claude.md).
 
 ## Provider detection and overrides
 
 Preferred resolution:
 
 1. Detect the active runtime/provider automatically where possible.
-2. If `AI_PROVIDER` is explicitly set, use it as the override.
-3. Load the global provider file.
-4. Deep-merge an optional repository provider file.
-5. Resolve the requested role.
-6. Follow the configured fallback chain if the preferred model/role is unavailable. For native role agents this is an explicit retry contract (`ai-<role>` -> `ai-<role>-fallback-1` -> later fallbacks); do not silently execute the delegated work in `primary` after a model-startup/availability failure unless configuration explicitly routes there.
+2. If `AI_PROVIDER` is explicitly set, use it as the provider override.
+3. Select `low`, `medium`, or `high` from `--profile`, then `AI_PROFILE`, then the saved per-provider profile, otherwise default to `medium`.
+4. Load the selected global provider profile (`<provider>.yml` for medium, `<provider>.low.yml` / `<provider>.high.yml` otherwise).
+5. Deep-merge the generic repository override `<repo>/.ai/providers/<provider>.yml` if present.
+6. Deep-merge `<repo>/.ai/providers/<provider>.<profile>.yml` if present.
+7. Resolve the requested role.
+8. Follow the configured fallback chain if the preferred model/role is unavailable. For native role agents this is an explicit retry contract (`ai-<role>` -> `ai-<role>-fallback-1` -> later fallbacks); do not silently execute the delegated work in `primary` after a model-startup/availability failure unless configuration explicitly routes there.
 
 Example explicit override:
 
@@ -165,6 +183,24 @@ or:
 ```bash
 export AI_PROVIDER=claude
 ```
+
+Profile override examples:
+
+```powershell
+$env:AI_PROFILE = "low"
+```
+
+```bash
+export AI_PROFILE=high
+```
+
+Or use `--profile low|medium|high` for one command. `--profile` wins over `AI_PROFILE`. Persist the normal profile for a provider with:
+
+```powershell
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --set-profile low
+```
+
+The saved selection lives under ignored machine-local state (`~/.ai/local/provider-profiles.json`). Re-render/re-sync native client wiring after changing the saved profile.
 
 A repository override only needs the keys it changes. Example:
 
@@ -185,7 +221,8 @@ The helper implements and exposes the effective merge:
 
 ```powershell
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --effective
-python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --validate
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --profile low --effective
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --profile high --validate
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --role executor
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --diagnose
 ```
@@ -197,7 +234,35 @@ python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --render-n
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider claude --render-native "$env:USERPROFILE\.ai\generated\claude"
 ```
 
+Add `--profile low|medium|high` before rendering to switch the native client wiring. After a profile change, re-render/re-sync native client configuration; changing `AI_PROFILE` alone does not rewrite already-generated native agents.
+
 Use `--repo <path>` when repository overrides should be included. The renderer does not edit native client configuration directly; safe merge/update/uninstall belongs to the installer.
+
+## Usage profiles
+
+| Profile | Intent | Typical behavior |
+|---|---|---|
+| `low` | Conserve usage/quota | Lower effort, cheaper capable models, max concurrency `2` |
+| `medium` | Recommended default | Balanced primary/executor split, max concurrency `4` |
+| `high` | Quality-first difficult work | Stronger/higher-effort execution and review, max concurrency `4` |
+
+Profiles change model/effort/concurrency policy, not the skill workflow contract: substantial-only advisor checkpoints, bounded workers, fallback behavior, and plan-only parallelism remain in force.
+
+Current defaults:
+
+| Codex profile | primary | executor | researcher | advisor | fast | max agents |
+|---|---|---|---|---|---|---:|
+| `low` | GPT-5.6 Sol / medium | GPT-5.6 Sol / low | GPT-5.6 Sol / low | GPT-5.6 Sol / low | GPT-6 Luna / low | 2 |
+| `medium` | GPT-6 Astra / high | GPT-5.6 Sol / medium | GPT-5.6 Sol / medium | GPT-5.6 Sol / medium | GPT-6 Luna / low | 4 |
+| `high` | GPT-6 Astra / high | GPT-6 Sol / high | GPT-6 Sol / high | GPT-6 Sol / high | GPT-6 Luna / low | 4 |
+
+| Claude profile | primary | executor | researcher | advisor | fast | max agents |
+|---|---|---|---|---|---|---:|
+| `low` | Sonnet / medium | Sonnet / low | Sonnet / low | Sonnet / low | Haiku / low | 2 |
+| `medium` | Opus / high | Sonnet / medium | Sonnet / medium | Sonnet / medium | Haiku / low | 4 |
+| `high` | Opus / high | Sonnet / high | Sonnet / high | Opus / high | Haiku / low | 4 |
+
+These are recommendations, not guarantees of account availability. Runtime fallback and installer/Doctor checks should handle unavailable models without hard-coding assumptions about a user's plan or workspace.
 
 ## Important orchestration defaults
 

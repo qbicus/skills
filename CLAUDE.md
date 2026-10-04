@@ -54,7 +54,7 @@ Do not run it for simple Q&A with no project changes.
 
 ## Provider-aware execution
 
-Use the shared role-routing policy in `providers/claude.yml` and `docs/model-routing.md`. Shared skills request `primary`, `executor`, `researcher`, `advisor`, or `fast`; they must not hard-code Claude model names. Apply repository overrides from `<repo>/.ai/providers/claude.yml` when present.
+Use the shared role-routing policy in `providers/claude.yml` (medium/default), `providers/claude.low.yml`, `providers/claude.high.yml`, and `docs/model-routing.md`. Shared skills request `primary`, `executor`, `researcher`, `advisor`, or `fast`; they must not hard-code Claude model names. Select profiles through `--profile`, `AI_PROFILE`, or the saved per-provider selection (default `medium`). Apply generic repository overrides from `<repo>/.ai/providers/claude.yml` and optional profile-specific overrides from `<repo>/.ai/providers/claude.<profile>.yml`.
 
 When installed, delegate provider roles to the generated Claude subagents `ai-executor`, `ai-researcher`, `ai-advisor`, and `ai-fast`. Keep `primary` in the owning conversation. The generated subagent frontmatter carries model, effort, and read/write tool boundaries; repository provider overrides require regenerating/re-syncing the native artifacts before they affect Claude's native agent files. If a preferred role model is unavailable, use the generated `ai-<role>-fallback-N` agent in order.
 

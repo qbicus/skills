@@ -7,9 +7,15 @@ Create only the file(s) you need:
 ```text
 .ai/providers/codex.yml
 .ai/providers/claude.yml
+.ai/providers/codex.low.yml       # optional low-profile-only override
+.ai/providers/codex.medium.yml    # optional medium-profile-only override
+.ai/providers/codex.high.yml      # optional high-profile-only override
+.ai/providers/claude.low.yml
+.ai/providers/claude.medium.yml
+.ai/providers/claude.high.yml
 ```
 
-Repository values deep-merge over the corresponding global file under `~/.ai/providers/`.
+The generic provider override applies to every selected profile. A profile-specific override applies last. Global `medium` is stored in `~/.ai/providers/<provider>.yml`; global low/high profiles use `<provider>.low.yml` / `<provider>.high.yml`.
 
 Example:
 
@@ -33,14 +39,14 @@ Changing a repository provider override changes the framework's effective routin
 Inspect the effective repo config:
 
 ```text
-python ~/.ai/scripts/ai.py provider --repo <repo-root> --effective
+python ~/.ai/scripts/ai.py provider --repo <repo-root> --profile low --effective
 ```
 
 Render native fragments for review/sync:
 
 ```text
-python ~/.ai/scripts/ai.py provider --provider codex --repo <repo-root> --render-native <output-dir>
-python ~/.ai/scripts/ai.py provider --provider claude --repo <repo-root> --render-native <output-dir>
+python ~/.ai/scripts/ai.py provider --provider codex --profile low --repo <repo-root> --render-native <output-dir>
+python ~/.ai/scripts/ai.py provider --provider claude --profile high --repo <repo-root> --render-native <output-dir>
 ```
 
 The installer will automate safe syncing while preserving unrelated project/client configuration.

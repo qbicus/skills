@@ -1,6 +1,6 @@
 # Provider-aware model routing
 
-The framework keeps reusable skills provider-agnostic. Skills request a role; the active provider configuration resolves that role to a concrete model, effort level, fallback chain, and native execution mechanism.
+The framework keeps reusable skills provider-agnostic. Skills request a role; the active provider profile resolves that role to a concrete model, effort level, fallback chain, and native execution mechanism.
 
 ## Roles
 
@@ -14,58 +14,132 @@ The framework keeps reusable skills provider-agnostic. Skills request a role; th
 
 Shared skills use role names, never concrete model names.
 
-## Provider files
+## Usage profiles
 
-Global defaults:
+Both providers expose three cost/quality profiles:
+
+| Profile | Intent | Typical policy |
+|---|---|---|
+| `low` | Conserve usage/quota | Lower reasoning effort, cheaper capable models, lower concurrency |
+| `medium` | Recommended/default | Balanced flagship-primary + mid-tier execution/review |
+| `high` | Quality-first difficult work | Stronger/higher-effort execution and review |
+
+`medium` is the default when no explicit, environment, or saved per-provider profile is set.
+
+Global profile files:
 
 ```text
-~/.ai/providers/codex.yml
-~/.ai/providers/claude.yml
+~/.ai/providers/codex.yml          # medium/default
+~/.ai/providers/codex.low.yml
+~/.ai/providers/codex.high.yml
+~/.ai/providers/claude.yml         # medium/default
+~/.ai/providers/claude.low.yml
+~/.ai/providers/claude.high.yml
 ```
 
-Optional repository overrides:
+Profiles change model/effort/concurrency policy. They do **not** disable the shared workflow contract: advisor checkpoints remain substantial-only unless explicitly overridden, workers remain bounded, fallback remains explicit, and parallel execution remains plan-only.
+
+Current recommended mappings:
+
+| Codex | low | medium | high |
+|---|---|---|---|
+| primary | GPT-5.6 Sol / medium | GPT-6 Astra / high | GPT-6 Astra / high |
+| executor | GPT-5.6 Sol / low | GPT-5.6 Sol / medium | GPT-6 Sol / high |
+| researcher | GPT-5.6 Sol / low | GPT-5.6 Sol / medium | GPT-6 Sol / high |
+| advisor | GPT-5.6 Sol / low | GPT-5.6 Sol / medium | GPT-6 Sol / high |
+| fast | GPT-6 Luna / low | GPT-6 Luna / low | GPT-6 Luna / low |
+| max agents | 2 | 4 | 4 |
+
+| Claude | low | medium | high |
+|---|---|---|---|
+| primary | Sonnet / medium | Opus / high | Opus / high |
+| executor | Sonnet / low | Sonnet / medium | Sonnet / high |
+| researcher | Sonnet / low | Sonnet / medium | Sonnet / high |
+| advisor | Sonnet / low | Sonnet / medium | Opus / high |
+| fast | Haiku / low | Haiku / low | Haiku / low |
+| max agents | 2 | 4 | 4 |
+
+Model availability remains account/workspace-specific; fallback and Doctor should treat availability as runtime evidence rather than infer it from model names.
+
+## Profile selection
+
+Selection precedence:
+
+1. `--profile low|medium|high`, when supplied;
+2. `AI_PROFILE`, when set;
+3. saved per-provider selection under `~/.ai/local/provider-profiles.json`;
+4. `medium`.
+
+Examples:
+
+```powershell
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --profile low --effective
+$env:AI_PROFILE = "high"
+```
+
+```bash
+python ~/.ai/scripts/ai.py provider --provider claude --profile low --effective
+export AI_PROFILE=high
+```
+
+Persist the usual profile independently per provider:
+
+```powershell
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --set-profile low
+python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider claude --set-profile medium
+```
+
+Saved selections live in ignored machine-local state at `~/.ai/local/provider-profiles.json`.
+
+Changing the profile used by the helper does not mutate already-generated native Codex/Claude agent files. Re-render/re-sync native client wiring after switching the profile.
+
+## Repository overrides
+
+Generic overrides apply to every selected profile:
 
 ```text
 <repo>/.ai/providers/codex.yml
 <repo>/.ai/providers/claude.yml
 ```
 
-Only overridden keys need to appear in a repository file. Repository values deep-merge over global values. Lists and scalar values replace their inherited value; nested mappings merge recursively.
+Optional profile-specific overrides apply last:
+
+```text
+<repo>/.ai/providers/codex.low.yml
+<repo>/.ai/providers/codex.medium.yml
+<repo>/.ai/providers/codex.high.yml
+<repo>/.ai/providers/claude.low.yml
+<repo>/.ai/providers/claude.medium.yml
+<repo>/.ai/providers/claude.high.yml
+```
+
+Only overridden keys need to appear in a repository file. Mappings deep-merge; lists and scalar values replace the inherited value.
 
 ## Executable resolution order
 
-The runtime helper now implements this order:
+The runtime helper implements this order:
 
 1. `--provider codex|claude`, if supplied.
 2. `AI_PROVIDER`, if set.
 3. Known client runtime environment markers when unambiguous.
 4. If no provider can be determined, fail clearly and require an explicit provider.
-5. Load `~/.ai/providers/<provider>.yml` (the framework copy in the current installation).
-6. Deep-merge `<repo>/.ai/providers/<provider>.yml` if present.
-7. Validate the effective config.
-8. Resolve the requested role's preferred model/effort.
-9. If a supplied availability set excludes it, try `fallbackModels`, then `fallbackRoles` recursively.
-10. Report whether fallback was used.
-11. For native delegated agents, an unavailable/unsupported model must trigger the next generated `ai-<role>-fallback-N` agent explicitly. The primary thread must not silently execute the delegated task itself unless the configured fallback chain explicitly resolves to `primary` or every configured candidate is exhausted and that escalation is reported. Model startup/availability failures do not count as task-attempt failures.
+5. Resolve the profile from `--profile`, `AI_PROFILE`, saved per-provider state, then `medium`.
+6. Load the selected global profile (`<provider>.yml` for medium, `<provider>.low.yml` / `<provider>.high.yml` otherwise).
+7. Deep-merge `<repo>/.ai/providers/<provider>.yml` if present.
+8. Deep-merge `<repo>/.ai/providers/<provider>.<profile>.yml` if present.
+9. Validate the effective config.
+10. Resolve the requested role's preferred model/effort.
+11. If a supplied availability set excludes it, try `fallbackModels`, then `fallbackRoles` recursively.
+12. Report whether fallback was used.
+13. For native delegated agents, an unavailable/unsupported model must trigger the next generated `ai-<role>-fallback-N` agent explicitly. The primary thread must not silently execute the delegated task itself unless the configured fallback chain explicitly resolves to `primary` or every configured candidate is exhausted and that escalation is reported. Model startup/availability failures do not count as task-attempt failures.
 
 Commands:
 
 ```text
 python ~/.ai/scripts/ai.py provider --effective
-python ~/.ai/scripts/ai.py provider --validate
+python ~/.ai/scripts/ai.py provider --profile low --effective
+python ~/.ai/scripts/ai.py provider --profile high --validate
 python ~/.ai/scripts/ai.py provider --role executor
-```
-
-When automatic detection is unavailable:
-
-```bash
-export AI_PROVIDER=claude
-```
-
-or:
-
-```powershell
-$env:AI_PROVIDER = "codex"
 ```
 
 ## Provider schema
@@ -75,6 +149,7 @@ Current supported shape:
 ```yaml
 version: 1
 provider: codex
+profile: medium
 
 roles:
   primary:
@@ -95,7 +170,7 @@ roles:
 
   advisor:
     model: <model>
-    effort: high
+    effort: medium
     fallbackRoles:
       - executor
       - primary
@@ -121,8 +196,11 @@ behavior:
 
 runtime:
   automaticDetection: true
+  defaultProfile: medium
   explicitProviderOverrideEnvironmentVariable: AI_PROVIDER
+  explicitProfileOverrideEnvironmentVariable: AI_PROFILE
   repositoryOverridePath: .ai/providers/codex.yml
+  repositoryProfileOverridePath: .ai/providers/codex.{profile}.yml
   nativeAgentPrefix: ai-
 ```
 
@@ -130,49 +208,34 @@ Provider-specific runtime metadata may add keys under `runtime`.
 
 ## Repository override example
 
-```yaml
-roles:
-  executor:
-    model: <repo-preferred-model>
-    effort: high
+Generic override, applied to every profile:
 
+```yaml
 behavior:
   advisor:
     repeatedFailureThreshold: 3
 ```
 
-Everything not listed continues to inherit from the global provider config.
+Profile-only override:
 
-## Validation and common config errors
+```yaml
+# <repo>/.ai/providers/codex.low.yml
+roles:
+  fast:
+    effort: medium
+```
 
-Validate the merged config before rendering/installing native files:
+## Validation and diagnostics
+
+Validate a selected profile before rendering/installing native files:
 
 ```text
-python ~/.ai/scripts/ai.py provider --provider codex --validate
+python ~/.ai/scripts/ai.py provider --provider codex --profile medium --validate
+python ~/.ai/scripts/ai.py provider --provider codex --profile low --validate
+python ~/.ai/scripts/ai.py provider --provider codex --profile high --validate
 ```
 
-Examples rejected by validation:
-
-```yaml
-# unknown role fallback
-roles:
-  advisor:
-    fallbackRoles: [super-reviewer]
-```
-
-```yaml
-# threshold must be >= 1
-behavior:
-  advisor:
-    repeatedFailureThreshold: 0
-```
-
-```yaml
-# parallel mode is deliberately restricted
-behavior:
-  execution:
-    parallelMode: automatic
-```
+Examples rejected by validation include unknown fallback roles, repeated-failure thresholds below `1`, or unsupported automatic parallel modes.
 
 Provider YAML should use the documented schema and 2-space indentation. The helper uses PyYAML when installed and includes a small built-in parser for this framework's supported YAML subset so provider inspection does not require an extra package.
 
@@ -181,39 +244,36 @@ Provider YAML should use the documented schema and 2-space indentation. The help
 Normal execution uses the preferred configured models. For diagnostics, tests, and future installer capability probing, restrict the helper to an explicit availability set:
 
 ```text
-python ~/.ai/scripts/ai.py provider --provider codex --role executor --available-model gpt-5.6-sol
+python ~/.ai/scripts/ai.py provider --provider codex --profile medium --role executor --available-model gpt-6-sol
 ```
 
-Repeat `--available-model` to supply more than one candidate.
+Repeat `--available-model` to supply more than one candidate. The same availability list can be supplied to `--render-native`; generated native files then contain the resolved fallback models rather than unavailable preferred ones.
 
-The same availability list can be supplied to `--render-native`; generated native files then contain the resolved fallback models rather than unavailable preferred ones.
+### Runtime fallback contract
+
+Native clients do not infer that `ai-fast-fallback-1` is the retry for `ai-fast`. The framework therefore makes fallback an explicit parent-orchestration rule: if `ai-<role>` cannot start because its model is unavailable/unsupported, invoke `ai-<role>-fallback-1`, then later generated fallbacks in order. Do not silently complete the delegated task in the primary thread. Only use primary when provider configuration explicitly resolves to it or the configured native chain is exhausted and that escalation is reported.
 
 ## Native rendering
 
-The provider files are the source of truth. Native files are generated, not hand-maintained.
+The selected provider profile plus repository overrides are the source of truth. Native files are generated, not hand-maintained.
 
 ```text
-python ~/.ai/scripts/ai.py provider --provider codex --render-native <output-dir>
-python ~/.ai/scripts/ai.py provider --provider claude --render-native <output-dir>
+python ~/.ai/scripts/ai.py provider --provider codex --profile medium --render-native ~/.ai/generated/codex
+python ~/.ai/scripts/ai.py provider --provider codex --profile low --render-native ~/.ai/generated/codex
+python ~/.ai/scripts/ai.py provider --provider claude --profile high --render-native ~/.ai/generated/claude
 ```
 
 Use `--repo <repo-root>` to include repository overrides.
 
-`providers/*.yml` is the source of truth. Client-native files are rendered into local `generated/<provider>/` directories (or a temporary output directory during tests). `generated/` is machine/runtime state and is not checked into the framework repository. The installer will regenerate and merge/reference these files rather than relying on checked-in native snapshots.
+`generated/` is machine/runtime state and is not checked into the framework repository. The installer will regenerate and merge/reference these files rather than relying on checked-in native snapshots.
 
 ### Codex
 
-Current Codex supports custom agents in `~/.codex/agents/` / `.codex/agents/`, including per-agent `model`, `model_reasoning_effort`, and inherited session configuration. The generated config fragment declares `ai-executor`, `ai-researcher`, `ai-advisor`, and `ai-fast`, while the main thread uses the `primary` model/effort.
-
-The generated read-only roles use `sandbox_mode = "read-only"`; executor uses `workspace-write`. Parallel capacity is capped by `maxConcurrentAgents`, but actual parallel execution still requires plan approval.
-
-Official reference: https://learn.chatgpt.com/docs/agent-configuration/subagents
+The generated config fragment declares `ai-executor`, `ai-researcher`, `ai-advisor`, and `ai-fast`, while the main thread uses the selected profile's `primary` model/effort. Read-only roles use `sandbox_mode = "read-only"`; executor uses `workspace-write`. `behavior.execution.maxConcurrentAgents` becomes the native concurrency cap, but actual parallel execution still requires plan approval.
 
 ### Claude Code
 
-Claude Code custom subagents support `model`, `effort`, `tools`, `disallowedTools`, permissions, MCP servers, skills, and other role-specific configuration. Generated framework agents apply narrower tool sets to research/review/fast roles and write/shell capability to the executor.
-
-Official reference: https://code.claude.com/docs/en/sub-agents
+Generated Claude subagents apply the selected profile's `model`, `effort`, and role-specific tool boundaries. The owning/main Claude conversation uses the selected profile's `primary` mapping.
 
 ## Advisor behavior
 
@@ -227,11 +287,7 @@ The framework checkpoint contract uses compact, purpose-specific context and doe
 
 ### Claude native advisor
 
-Claude Code also has a native advisor tool. It is **not the default implementation of framework checkpoints** because the native advisor receives the full conversation for every consultation. `ai-advisor` preserves the framework's compact-context contract.
-
-Native advisor remains an optional/manual full-session second opinion. As of 2026-10-03, Claude documentation states that Fable is temporarily unavailable as a native advisor selection. The provider retains `preferredWhenAvailable: fable`, while the current `advisor` role resolves to `opus`.
-
-Official reference: https://code.claude.com/docs/en/advisor
+Claude Code's native advisor is **not** the default implementation of framework checkpoints because it receives the full conversation for every consultation. `ai-advisor` preserves the framework's compact-context contract. Native advisor remains an optional/manual full-session second opinion. The selected Claude profile still controls the portable `ai-advisor` model/effort.
 
 ## Substantial work
 
@@ -248,8 +304,6 @@ substantial: false
 ```
 
 Do not infer substantial work from file count alone. Treat features, migrations, modernization, architecture changes, and non-trivial debugging as substantial by default unless the parent workflow has a clear reason not to. Small local edits normally classify as false.
-
-`new-feature` records the classification in the approved spec and carries it through design, task planning, execution, and final review.
 
 ## Worker scope
 
@@ -278,4 +332,4 @@ Use `researcher` when safe execution depends on external/current evidence such a
 
 Parallel execution is never enabled merely because tasks appear independent. A planning artifact must explicitly mark the work `parallel-safe`/`parallel-eligible`, and the user or parent workflow must select parallel execution before `parallel-exec` starts workers.
 
-`maxConcurrentAgents` is only an upper bound. Task dependency order and conflict checks remain authoritative.
+`maxConcurrentAgents` is only an upper bound. Task dependency order and conflict checks remain authoritative. Low profiles intentionally use a lower cap; that does not authorize automatic fan-out.

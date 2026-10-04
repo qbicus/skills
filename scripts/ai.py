@@ -14,8 +14,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from provider_runtime import (  # noqa: E402
     ProviderConfigError,
+    SUPPORTED_PROFILES,
     SUPPORTED_ROLES,
+    detect_profile,
     detect_provider,
+    save_profile,
     effective_summary,
     find_repo_root,
     load_effective_config,
@@ -41,7 +44,9 @@ def print_help() -> None:
     print("  ai provider --effective")
     print("  ai provider --validate")
     print("  ai provider --role executor")
-    print("  ai provider --provider claude --render-native ./out/claude")
+    print("  ai provider --profile low --effective")
+    print("  ai provider --provider codex --set-profile low")
+    print("  ai provider --provider claude --profile high --render-native ./out/claude")
     print()
     print(f"Full documentation: {ROOT / 'README.md'}")
     print(f"Quick reference:    {ROOT / 'HELP.md'}")
@@ -59,6 +64,8 @@ def print_skills() -> int:
 def provider_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="ai provider", add_help=True)
     p.add_argument("--provider", choices=["codex", "claude"], help="Override provider detection")
+    p.add_argument("--profile", choices=SUPPORTED_PROFILES, help="Temporarily select usage/quality profile: low, medium, or high")
+    p.add_argument("--set-profile", choices=SUPPORTED_PROFILES, help="Persist the selected profile for this provider under ~/.ai/local")
     p.add_argument("--repo", type=Path, help="Repository root used for .ai/provider overrides")
     p.add_argument("--effective", action="store_true", help="Print the effective merged config summary")
     p.add_argument("--validate", action="store_true", help="Validate effective provider config")
@@ -88,6 +95,7 @@ def _get_dotted(data: dict, dotted: str):
 def _print_diagnostics(provider: str, effective, repo_root: Path) -> None:
     home = Path.home()
     print(f"Provider: {provider}")
+    print(f"Profile: {effective.profile}")
     print(f"Repository: {repo_root}")
     print(f"CLI executable: {shutil.which(provider) or 'not found on PATH'}")
     print("Config sources:")
@@ -109,7 +117,9 @@ def _print_diagnostics(provider: str, effective, repo_root: Path) -> None:
         native = agents / f"ai-{role}{suffix}"
         print(f"  ai-{role:10}: {'installed' if native.exists() else 'not installed'}")
     repo_override = repo_root / ".ai" / "providers" / f"{provider}.yml"
+    profile_override = repo_root / ".ai" / "providers" / f"{provider}.{effective.profile}.yml"
     print(f"Repo override: {repo_override} ({'active' if repo_override.exists() else 'none'})")
+    print(f"Profile override: {profile_override} ({'active' if profile_override.exists() else 'none'})")
 
 
 def provider_command(argv: list[str]) -> int:
@@ -120,8 +130,13 @@ def provider_command(argv: list[str]) -> int:
             print("Provider could not be detected automatically.", file=sys.stderr)
             print("Use --provider codex|claude or set AI_PROVIDER.", file=sys.stderr)
             return 2
+        if args.set_profile:
+            saved_path = save_profile(provider, args.set_profile, ROOT)
+            print(f"Saved {provider} profile: {args.set_profile} ({saved_path})")
+            print("Re-render/re-sync native client wiring for the profile change to affect installed agents/settings.")
+        profile, profile_source = detect_profile(args.profile or args.set_profile, provider=provider, framework_root=ROOT)
         repo_root = (args.repo or find_repo_root()).resolve()
-        effective = load_effective_config(provider, repo_root, ROOT)
+        effective = load_effective_config(provider, repo_root, ROOT, profile)
 
         if args.get_path:
             value = _get_dotted(effective.config, args.get_path)
@@ -141,7 +156,7 @@ def provider_command(argv: list[str]) -> int:
                 for error in errors:
                     print(f"ERROR: {error}", file=sys.stderr)
                 return 1
-            print(f"OK: effective {provider} provider config is valid")
+            print(f"OK: effective {provider}/{profile} provider config is valid")
 
         if args.role:
             resolved = resolve_role(effective.config, args.role, args.available_model)
@@ -169,6 +184,7 @@ def provider_command(argv: list[str]) -> int:
                 print(json.dumps(summary, indent=2))
             else:
                 print(f"Provider: {provider} ({source})")
+                print(f"Profile:  {profile} ({profile_source})")
                 print(f"Repository: {repo_root}")
                 print("Config sources:")
                 for path in effective.sources:
@@ -185,14 +201,21 @@ def provider_command(argv: list[str]) -> int:
                 print(f"  completion check:           {advisor.get('completionCheck')}")
                 print(f"  worker scope:               {execution.get('workerScope')}")
                 print(f"  parallel mode:              {execution.get('parallelMode')}")
+                print(f"  max concurrent agents:      {execution.get('maxConcurrentAgents')}")
 
-        if not any((args.validate, args.role, args.render_native, args.effective, args.get_path, args.diagnose)):
+        if not any((args.validate, args.role, args.render_native, args.effective, args.get_path, args.diagnose, args.set_profile)):
             print("Provider-aware routing")
             print(f"  Active provider:  {provider} ({source})")
-            print(f"  Codex defaults:   {ROOT / 'providers' / 'codex.yml'}")
-            print(f"  Claude defaults:  {ROOT / 'providers' / 'claude.yml'}")
+            print(f"  Active profile:   {profile} ({profile_source})")
+            print(f"  Codex medium:     {ROOT / 'providers' / 'codex.yml'}")
+            print(f"  Codex low/high:   {ROOT / 'providers' / 'codex.low.yml'} / {ROOT / 'providers' / 'codex.high.yml'}")
+            print(f"  Claude medium:    {ROOT / 'providers' / 'claude.yml'}")
+            print(f"  Claude low/high:  {ROOT / 'providers' / 'claude.low.yml'} / {ROOT / 'providers' / 'claude.high.yml'}")
             print(f"  Repo override:    {repo_root / '.ai' / 'providers' / (provider + '.yml')}")
-            print("  Explicit override: AI_PROVIDER or --provider")
+            print(f"  Profile override: {repo_root / '.ai' / 'providers' / (provider + '.' + profile + '.yml')}")
+            print("  Profile selection: --profile > AI_PROFILE > saved per-provider profile > medium")
+            print("  Persist profile:   --set-profile low|medium|high")
+            print("  Provider override: AI_PROVIDER or --provider")
             print(f"  Details:          {ROOT / 'docs' / 'model-routing.md'}")
             print("  Use --effective, --validate, --role, or --render-native for more detail.")
         return 0

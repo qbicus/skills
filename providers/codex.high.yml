@@ -1,11 +1,9 @@
 version: 1
 provider: codex
-profile: medium
+profile: high
 
-# Shared skills refer to roles, never concrete models.
-# Repository overrides may replace any value from:
-# <repo>/.ai/providers/codex.yml
-
+# Quality-first profile. Use when difficult architecture/debugging work justifies
+# higher reasoning effort and stronger execution/review models.
 roles:
   primary:
     model: gpt-6-astra
@@ -15,22 +13,22 @@ roles:
       - gpt-5.6-sol
 
   executor:
-    model: gpt-5.6-sol
-    effort: medium
+    model: gpt-6-sol
+    effort: high
     fallbackModels:
-      - gpt-6-sol
+      - gpt-5.6-sol
       - gpt-6-astra
 
   researcher:
-    model: gpt-5.6-sol
-    effort: medium
+    model: gpt-6-sol
+    effort: high
     fallbackModels:
-      - gpt-6-sol
+      - gpt-5.6-sol
       - gpt-6-astra
 
   advisor:
-    model: gpt-5.6-sol
-    effort: medium
+    model: gpt-6-sol
+    effort: high
     fallbackRoles:
       - executor
       - primary
@@ -64,7 +62,3 @@ runtime:
   repositoryOverridePath: .ai/providers/codex.yml
   repositoryProfileOverridePath: .ai/providers/codex.{profile}.yml
   nativeAgentPrefix: ai-
-
-# Runtime note:
-# The framework renderer turns this policy into Codex custom-agent TOML plus a
-# config fragment. generated/codex is machine-local runtime state.

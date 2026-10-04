@@ -75,11 +75,12 @@ Common mappings:
 
 Shared skills are provider-agnostic. They request execution roles instead of concrete model names. Resolve roles through:
 
-- `providers/codex.yml` when running under Codex/OpenAI;
-- `providers/claude.yml` when running under Claude;
-- optional repository overrides at `<repo>/.ai/providers/<provider>.yml`.
+- `providers/codex.yml` / `providers/claude.yml` for the default `medium` profile;
+- `providers/<provider>.low.yml` for lower-usage operation;
+- `providers/<provider>.high.yml` for quality-first difficult work;
+- optional repository overrides at `<repo>/.ai/providers/<provider>.yml` and `<repo>/.ai/providers/<provider>.<profile>.yml`.
 
-Use `AI_PROVIDER=codex|claude` only as an explicit override when automatic runtime detection is unavailable or intentionally overridden. Repository provider values override global values.
+Profile selection order is `--profile`, then `AI_PROFILE`, then the saved per-provider profile, then `medium`. Use `AI_PROVIDER=codex|claude` only as an explicit provider override when automatic runtime detection is unavailable or intentionally overridden. Generic repository provider values override the selected global profile; profile-specific repository values apply last.
 
 Standard roles:
 
@@ -114,6 +115,7 @@ The provider helper is the executable source of truth for merged config and nati
 
 ```text
 python ~/.ai/scripts/ai.py provider --effective
+python ~/.ai/scripts/ai.py provider --profile low --effective
 python ~/.ai/scripts/ai.py provider --role executor
 python ~/.ai/scripts/ai.py provider --validate
 ```

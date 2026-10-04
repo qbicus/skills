@@ -12,7 +12,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from provider_runtime import (  # noqa: E402
     ProviderConfigError,
     deep_merge,
+    detect_profile,
     detect_provider,
+    save_profile,
     load_effective_config,
     render_native,
     resolve_role,
@@ -39,6 +41,23 @@ class ProviderRuntimeTests(unittest.TestCase):
         self.assertEqual(provider, "claude")
         self.assertEqual(source, "AI_PROVIDER")
 
+    def test_profile_defaults_to_medium_and_honors_override(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            framework = Path(td)
+            profile, source = detect_profile(None, {}, provider="codex", framework_root=framework)
+            self.assertEqual(profile, "medium")
+            self.assertEqual(source, "default")
+            save_profile("codex", "low", framework)
+            profile, source = detect_profile(None, {}, provider="codex", framework_root=framework)
+            self.assertEqual(profile, "low")
+            self.assertEqual(source, "saved profile")
+            profile, source = detect_profile(None, {"AI_PROFILE": "high"}, provider="codex", framework_root=framework)
+            self.assertEqual(profile, "high")
+            self.assertEqual(source, "AI_PROFILE")
+            profile, source = detect_profile("medium", {"AI_PROFILE": "high"}, provider="codex", framework_root=framework)
+            self.assertEqual(profile, "medium")
+            self.assertEqual(source, "explicit argument")
+
     def test_effective_config_applies_repo_partial_override(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             repo = Path(td)
@@ -52,12 +71,33 @@ class ProviderRuntimeTests(unittest.TestCase):
             self.assertEqual(effective.config["roles"]["executor"]["model"], "repo-executor")
             self.assertEqual(effective.config["roles"]["primary"]["model"], "gpt-6-astra")
             self.assertEqual(effective.config["behavior"]["advisor"]["repeatedFailureThreshold"], 3)
+            self.assertEqual(effective.profile, "medium")
             self.assertEqual(len(effective.sources), 2)
+
+    def test_low_profile_and_profile_specific_repo_override(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            path = repo / ".ai" / "providers"
+            path.mkdir(parents=True)
+            (path / "codex.yml").write_text(
+                "behavior:\n  advisor:\n    repeatedFailureThreshold: 3\n",
+                encoding="utf-8",
+            )
+            (path / "codex.low.yml").write_text(
+                "roles:\n  fast:\n    effort: medium\n",
+                encoding="utf-8",
+            )
+            effective = load_effective_config("codex", repo, ROOT, "low")
+            self.assertEqual(effective.profile, "low")
+            self.assertEqual(effective.config["roles"]["primary"]["model"], "gpt-5.6-sol")
+            self.assertEqual(effective.config["roles"]["fast"]["effort"], "medium")
+            self.assertEqual(effective.config["behavior"]["advisor"]["repeatedFailureThreshold"], 3)
+            self.assertEqual(len(effective.sources), 3)
 
     def test_role_fallback_model(self) -> None:
         effective = load_effective_config("codex", ROOT, ROOT)
-        resolved = resolve_role(effective.config, "executor", ["gpt-5.6-sol"])
-        self.assertEqual(resolved["model"], "gpt-5.6-sol")
+        resolved = resolve_role(effective.config, "executor", ["gpt-6-sol"])
+        self.assertEqual(resolved["model"], "gpt-6-sol")
         self.assertTrue(resolved["fallbackUsed"])
 
     def test_role_fallback_role(self) -> None:
@@ -80,7 +120,7 @@ class ProviderRuntimeTests(unittest.TestCase):
             written = render_native(effective, Path(td))
             self.assertTrue(any(p.name == "config.fragment.toml" for p in written))
             text = (Path(td) / "agents" / "ai-executor.toml").read_text(encoding="utf-8")
-            self.assertIn('model = "gpt-6-sol"', text)
+            self.assertIn('model = "gpt-5.6-sol"', text)
             self.assertIn('sandbox_mode = "workspace-write"', text)
             fragment = (Path(td) / "config.fragment.toml").read_text(encoding="utf-8")
             self.assertIn("MUST retry the same task with ai-executor-fallback-1", fragment)
@@ -96,13 +136,18 @@ class ProviderRuntimeTests(unittest.TestCase):
             text = (Path(td) / "agents" / "ai-fast.toml").read_text(encoding="utf-8")
             self.assertIn('model = "gpt-5.6-sol"', text)
 
+    def test_high_profile_changes_codex_executor_and_advisor(self) -> None:
+        effective = load_effective_config("codex", ROOT, ROOT, "high")
+        self.assertEqual(effective.config["roles"]["executor"]["model"], "gpt-6-sol")
+        self.assertEqual(effective.config["roles"]["advisor"]["effort"], "high")
+
     def test_render_claude_native(self) -> None:
         effective = load_effective_config("claude", ROOT, ROOT)
         with tempfile.TemporaryDirectory() as td:
             written = render_native(effective, Path(td))
             self.assertTrue(any(p.name == "settings.fragment.json" for p in written))
             text = (Path(td) / "agents" / "ai-advisor.md").read_text(encoding="utf-8")
-            self.assertIn("model: opus", text)
+            self.assertIn("model: sonnet", text)
             self.assertIn("tools: Read, Glob, Grep", text)
 
 
