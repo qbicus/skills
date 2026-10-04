@@ -553,7 +553,7 @@ def platform_rid() -> tuple[str, str]:
     arch = "arm64" if machine in {"arm64", "aarch64"} else "x64" if machine in {"x86_64", "amd64"} else machine
     if system == "windows":
         if arch == "arm64":
-            raise RuntimeError("AiIndex Windows ARM64 is not currently supported by the bundled sqlite-vec runtime.")
+            raise RuntimeError("AiIndex Windows ARM64 is not available as a native release asset. Use the Linux ARM64 build manually through WSL, or run the installer on a supported native platform.")
         return "win-x64", "zip"
     if system == "linux":
         return f"linux-{arch}", "tar.gz"
@@ -562,21 +562,31 @@ def platform_rid() -> tuple[str, str]:
     raise RuntimeError(f"Unsupported platform: {system}/{machine}")
 
 
-def urlopen_json(url: str) -> Any:
-    headers = {"User-Agent": "company-ai-framework-installer"}
-    token = os.environ.get("AIINDEX_GITEA_TOKEN")
+def _github_headers() -> dict[str, str]:
+    # The framework and AiIndex release assets are public on GitHub. A token is
+    # optional and only used to raise API rate limits in automated environments.
+    headers = {
+        "User-Agent": "company-ai-framework-installer",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    token = os.environ.get("GITHUB_TOKEN")
     if token:
-        headers["Authorization"] = f"token {token}"
-    req = urllib.request.Request(url, headers=headers)
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def urlopen_json(url: str) -> Any:
+    req = urllib.request.Request(url, headers=_github_headers())
     with urllib.request.urlopen(req, timeout=30) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
 def download(url: str, dest: Path) -> None:
     headers = {"User-Agent": "company-ai-framework-installer"}
-    token = os.environ.get("AIINDEX_GITEA_TOKEN")
-    if token and "gt.qbic.ro" in url:
-        headers["Authorization"] = f"token {token}"
+    token = os.environ.get("GITHUB_TOKEN")
+    if token and "github.com" in url:
+        headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=60) as response, dest.open("wb") as out:
         shutil.copyfileobj(response, out)
