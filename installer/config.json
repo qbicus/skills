@@ -1,9 +1,8 @@
 {
   "schemaVersion": 1,
-  "frameworkRepositoryUrl": "",
+  "frameworkRepositoryUrl": "https://github.com/qbicus/skills.git",
   "frameworkBranch": "main",
   "aiIndexReleaseApiUrl": "https://api.github.com/repos/qbicus/skills/releases/latest",
   "aiIndexChecksumAsset": "SHA256SUMS",
-  "graphifyPackage": "graphifyy",
-  "managedSkillPrefix": "qbicus-ai-"
+  "graphifyPackage": "graphifyy"
 }
