@@ -703,6 +703,40 @@ def graphify_executable() -> str | None:
     return which("graphify")
 
 
+def graphify_integration_status(client: str) -> tuple[bool, str]:
+    """Detect whether Graphify's assistant skill is already installed.
+
+    The base Graphify install registers a skill under the assistant's skills
+    directory. Optional always-on instructions/hooks are separate Graphify
+    features and are deliberately not required for installer health.
+    """
+    home = Path.home()
+    if client == "codex":
+        skill = home / ".codex" / "skills" / "graphify" / "SKILL.md"
+    elif client == "claude":
+        skill = home / ".claude" / "skills" / "graphify" / "SKILL.md"
+    else:
+        return False, f"unsupported client: {client}"
+
+    if skill.exists() and skill.is_file():
+        return True, f"skill detected at {skill}"
+    return False, f"missing skill at {skill}"
+
+
+def _graphify_install_commands(graphify: str, client: str) -> list[list[str]]:
+    """Return preferred/fallback commands for registering the Graphify skill."""
+    if client == "codex":
+        return [[graphify, "install", "--platform", "codex"]]
+    if client == "claude":
+        commands = [[graphify, "install", "--platform", "claude"]]
+        # Some Graphify releases expose Claude-on-Windows as the legacy
+        # platform name `windows`; keep it only as a compatibility fallback.
+        if os.name == "nt":
+            commands.append([graphify, "install", "--platform", "windows"])
+        return commands
+    raise RuntimeError(f"Unsupported Graphify client: {client}")
+
+
 def install_graphify(clients: list[str], state: dict[str, Any], dry_run: bool, skip: bool) -> None:
     if skip:
         return
@@ -711,10 +745,16 @@ def install_graphify(clients: list[str], state: dict[str, Any], dry_run: bool, s
         raise RuntimeError("uv is required for Graphify but was not found. Bootstrap should install uv first.")
     package = load_json(CONFIG_PATH, {}).get("graphifyPackage", "graphifyy")
     preexisting = graphify_executable() is not None
+    integration_status = {client: graphify_integration_status(client) for client in clients}
     if dry_run:
         print(f"  would run: uv tool install --upgrade {package}")
         for client in clients:
-            print(f"  would run Graphify integration install for {client}")
+            healthy, detail = integration_status[client]
+            if healthy:
+                print(f"  would preserve existing Graphify skill for {client} ({detail})")
+            else:
+                cmd = _graphify_install_commands("graphify", client)[0]
+                print(f"  would run: {' '.join(cmd)} ({detail})")
         return
     proc = run([uv, "tool", "install", "--upgrade", package], check=False, capture=True)
     if proc.returncode != 0 and "already installed" not in (proc.stderr or "").lower():
@@ -732,8 +772,23 @@ def install_graphify(clients: list[str], state: dict[str, Any], dry_run: bool, s
         raise RuntimeError("Graphify was installed with uv but its executable could not be located")
     managed = state["graphify"].setdefault("managedClients", [])
     state["graphify"].setdefault("preexisting", preexisting)
+    detected = state["graphify"].setdefault("detectedClients", [])
     for client in clients:
-        run([graphify, client, "install"], check=False)
+        healthy, detail = graphify_integration_status(client)
+        if healthy:
+            print(f"  preserving existing Graphify skill for {client} ({detail})")
+            if client not in detected:
+                detected.append(client)
+            continue
+
+        last_proc = None
+        for command in _graphify_install_commands(graphify, client):
+            last_proc = run(command, check=False)
+            if last_proc.returncode == 0:
+                break
+        if not last_proc or last_proc.returncode != 0:
+            code = last_proc.returncode if last_proc else "unknown"
+            raise RuntimeError(f"Graphify skill install failed for {client} (exit {code})")
         if client not in managed:
             managed.append(client)
     state["graphify"]["executable"] = graphify
@@ -854,7 +909,10 @@ def install_or_repair(args: argparse.Namespace, state: dict[str, Any]) -> int:
         state["frameworkCommit"] = git_commit(FRAMEWORK_ROOT)
         save_json(STATE_PATH, state)
     print()
-    print(f"{args.action.replace('-', ' ').title()} complete for: {', '.join(clients)}")
+    if args.dry_run:
+        print(f"Dry run complete for: {', '.join(clients)}")
+    else:
+        print(f"{args.action.replace('-', ' ').title()} complete for: {', '.join(clients)}")
     for client in clients:
         print(f"  {client}: profile={profiles[client]}")
     return 0
