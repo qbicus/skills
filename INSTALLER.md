@@ -1,8 +1,43 @@
 # AI Framework Installer — Implementation Checklist
 
-Status: **planned — implementation is the next major workstream**
+Status: **implementation present — Windows live validation next, then Linux live validation**
 
 The installer owns the global AI framework installation lifecycle for Codex and Claude while preserving unrelated user configuration, skills, MCP registrations, repository overrides, and project indexes.
+
+
+## Implementation status snapshot — 2026-10-04
+
+Implemented in this pass:
+
+- shared lifecycle core: `installer/installer.py`;
+- Windows bootstrap: `install.ps1`;
+- Linux bootstrap: `install.sh`;
+- Install / Update / Repair / Uninstall / Doctor command surfaces;
+- Codex / Claude / both target selection;
+- low / medium / high profile selection and persistence;
+- prerequisite bootstrap for Git + `uv`;
+- shared-skill linking while preserving unrelated skills;
+- Codex native rendering + targeted TOML merge/restore;
+- Claude native rendering + targeted JSON merge/restore;
+- installer state under `~/.ai/local/installer-state.json`;
+- Graphify installation/update through `uv tool install --upgrade graphifyy` plus per-client integration;
+- AiIndex release download/checksum/extraction path with private Gitea token support;
+- AiIndex MCP wiring for Codex and Claude where client capabilities permit;
+- dry-run and non-interactive flags;
+- initial Doctor/Status output;
+- isolated Linux lifecycle tests and installer-core unit tests.
+
+Still requiring real-environment validation/hardening before release:
+
+- run the full lifecycle on the user's Windows Codex installation without losing existing config;
+- verify Windows Git/uv bootstrap on a machine where either is absent;
+- verify AiIndex private release asset names/API against an actual published release;
+- verify Claude MCP/Graphify integration on a real Claude installation when desired;
+- run the full Linux lifecycle on a real Linux machine;
+- add deeper drift/hash reporting and model-availability probing to Doctor;
+- decide/embed the canonical framework repository URL for one-line pipe bootstrap;
+- optionally add shared-runtime purge/removal after the last client is uninstalled;
+- complete platform matrix and failure-case tests below.
 
 ## 1. Supported operations
 
@@ -535,3 +570,16 @@ Once implemented:
 - [ ] Doctor/status accurately reports installation health.
 - [ ] Dry-run accurately shows intended changes without modifying the system.
 - [ ] Documentation matches the implemented lifecycle.
+
+
+## Prerequisite lifecycle clarification
+
+- Python is a framework runtime prerequisite, not just an installer implementation detail.
+- Accept existing Python 3.11+ without forcing an upgrade.
+- Fresh Windows bootstrap installs the highest stable Python 3.x package currently available through winget.
+- Fresh Linux bootstrap installs the distribution's current Python package and verifies it is 3.11+.
+- The bootstrap records whether Git/Python/uv were pre-existing or installed by the framework.
+- Uninstall must never uninstall Python, Git, or uv.
+
+
+Doctor and uninstall are intentionally non-mutating with respect to system prerequisites: they require an existing compatible Python runtime and never install Git, Python, or uv.

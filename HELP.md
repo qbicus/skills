@@ -207,6 +207,35 @@ index_project
 search_code
 ```
 
-## Installation
+## Installation / lifecycle
 
-Automated installer/update/uninstall is intentionally pending. Provider resolution and native fragment generation are implemented; do not invent installer commands yet. Use `docs/setup-codex.md` / `docs/setup-claude.md` for current manual/native details and `INSTALLER.md` for the installer checklist.
+Windows:
+
+```powershell
+& "$env:USERPROFILE\.ai\install.ps1" doctor
+& "$env:USERPROFILE\.ai\install.ps1" install -Target codex -Profile low
+& "$env:USERPROFILE\.ai\install.ps1" update-repair -Target both
+& "$env:USERPROFILE\.ai\install.ps1" uninstall -Target claude
+```
+
+Linux:
+
+```bash
+~/.ai/install.sh doctor
+~/.ai/install.sh install --target codex --profile low
+~/.ai/install.sh update-repair --target both
+~/.ai/install.sh uninstall --target claude
+```
+
+Common options include `--yes`, `--dry-run`, `--verbose`, `--skip-aiindex`, and `--skip-graphify` (PowerShell equivalents use normal named switches). `Update / Repair` is the repair/reinstall-owned-state path; there is no separate reinstall operation.
+
+For pipe bootstrap before the canonical repository URL is embedded, set `AI_FRAMEWORK_REPO_URL`. See `README.md` and `INSTALLER.md`.
+
+## Python prerequisite policy
+
+The AI framework itself runs Python scripts. Bootstrap therefore requires Python 3.11+ as a first-class prerequisite. Existing compatible Python is used as-is. If missing, Windows installs the highest stable Python 3.x package exposed by `winget`; Linux installs the current Python package exposed by the detected distribution package manager. Git and `uv` are handled similarly when missing.
+
+Uninstall deliberately leaves Python, Git, and `uv` installed because they are shared system/developer prerequisites.
+
+
+Doctor and uninstall are intentionally non-mutating with respect to system prerequisites: they require an existing compatible Python runtime and never install Git, Python, or uv.

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Company AI Framework Installer State",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "frameworkRoot",
+    "installedClients",
+    "profiles"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "frameworkRoot": {
+      "type": "string"
+    },
+    "frameworkCommit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "installedClients": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "codex",
+          "claude"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "profiles": {
+      "type": "object",
+      "properties": {
+        "codex": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "claude": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "configOwnership": {
+      "type": "object"
+    },
+    "aiIndex": {
+      "type": "object"
+    },
+    "graphify": {
+      "type": "object"
+    },
+    "pathChanges": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prerequisites": {
+      "type": "object",
+      "properties": {
+        "git": {
+          "type": "object"
+        },
+        "python": {
+          "type": "object"
+        },
+        "uv": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -16,7 +16,7 @@ or:
 
 It is the source of truth for company rules, reusable skills, provider/model-routing policy, prompt starters, project templates, repository-intelligence guidance, scripts, and hooks.
 
-> **Installation status:** automated install/update/uninstall is the next implementation step. The manual/canonical layout below is valid, but installer commands and generated client wiring will be completed separately. Do not treat this section as the final installer contract yet.
+> **Installation status:** Windows and Linux bootstrap/lifecycle installers are implemented. Live platform validation is still required before treating them as production-ready.
 
 ## Quick help
 
@@ -68,20 +68,86 @@ The generic repo override applies to every profile; a profile-specific repo over
 
 See [Provider-aware model routing](docs/model-routing.md) for merge order, fallbacks, behavioral settings, and runtime notes.
 
-## Installation placeholder
+## Installation
 
-Automated installation is intentionally **not implemented in this pass**. The planned installer will:
+The framework now includes a shared installer lifecycle with thin Windows/Linux bootstrap scripts:
 
-- install/update the canonical framework under `~/.ai` / `%USERPROFILE%\.ai`;
-- expose company skills to Codex and/or Claude without overwriting unrelated skills;
-- wire provider/runtime-specific agent/model configuration;
-- register AiIndex MCP where selected;
-- support safe **Update / Repair** operations;
-- support uninstall of installer-owned resources only;
-- preserve project `.ai-index.json` and `.ai-index/` data;
-- preserve unrelated MCP registrations and user skills.
+```text
+install.ps1
+install.sh
+installer/installer.py
+```
 
-Until that installer is implemented, use the existing manual/native-agent setup described below.
+Supported operations:
+
+```text
+Install
+Update / Repair
+Uninstall
+Doctor / Status
+```
+
+Targets can be `codex`, `claude`, or `both`, and provider profiles can be `low`, `medium`, or `high`.
+
+### Windows
+
+From an existing checkout/install:
+
+```powershell
+& "$env:USERPROFILE\.ai\install.ps1" doctor
+& "$env:USERPROFILE\.ai\install.ps1" install -Target codex -Profile low
+& "$env:USERPROFILE\.ai\install.ps1" update-repair -Target both
+& "$env:USERPROFILE\.ai\install.ps1" uninstall -Target claude
+```
+
+Bootstrap from a raw Git-hosted script once the framework repository URL is configured/published:
+
+```powershell
+$env:AI_FRAMEWORK_REPO_URL = "<framework-git-url>"
+irm <raw-install.ps1-url> | iex
+```
+
+For a non-default target/profile in a pipe bootstrap, invoke the downloaded script block with parameters or install once and use the local `~/.ai/install.ps1` lifecycle command.
+
+### Linux
+
+From an existing checkout/install:
+
+```bash
+~/.ai/install.sh doctor
+~/.ai/install.sh install --target codex --profile low
+~/.ai/install.sh update-repair --target both
+~/.ai/install.sh uninstall --target claude
+```
+
+Bootstrap from a raw Git-hosted script once the framework repository URL is configured/published:
+
+```bash
+export AI_FRAMEWORK_REPO_URL="<framework-git-url>"
+curl -fsSL <raw-install.sh-url> | bash
+```
+
+The bootstrap scripts ensure Git, a compatible Python runtime (3.11+), and `uv`, locate/clone the framework, then hand off to the shared Python installer. Existing compatible Python is preserved; a fresh Windows install selects the highest stable Python 3.x package available through `winget`, while Linux uses the distribution package manager.
+
+### What the installer owns
+
+The installer:
+
+- wires shared skills without replacing unrelated skills;
+- persists low/medium/high profiles per provider;
+- renders machine-local native routing under `~/.ai/generated/<provider>/`;
+- merges only framework-owned Codex/Claude config keys/sections and preserves unrelated settings;
+- installs/updates Graphify using the official `graphifyy` package through `uv`;
+- installs AiIndex CLI/MCP from release assets when available and verifies SHA-256;
+- registers AiIndex MCP for selected clients where supported;
+- records installer-owned state under `~/.ai/local/installer-state.json`;
+- never owns repo-local `.ai/providers/`, `.ai-index.json`, or `.ai-index/`.
+
+`Update / Repair` is intentionally both upgrade and repair: it regenerates missing/stale installer-owned wiring without requiring a destructive reinstall.
+
+### Bootstrap repository URL
+
+The public pipe-install command needs the canonical framework repository URL. Until that URL is hard-coded for release, set `AI_FRAMEWORK_REPO_URL` or pass the repository URL to the local bootstrap script. See [`installer/common/README.md`](installer/common/README.md).
 
 ## Native agent integration
 
@@ -680,3 +746,6 @@ Do not run it for simple Q&A with no project changes.
 ## Remaining installation work
 
 Provider resolution, fallback diagnostics, repo overrides, and native Codex/Claude fragment generation are implemented. The main remaining framework lifecycle work is the installer: prerequisite handling, client detection, safe merge/update/uninstall, drift/backups, AiIndex/Graphify wiring, and end-to-end validation on real Codex/Claude installations. Until that is complete, this README intentionally keeps installation as a placeholder rather than presenting unfinished installer commands as supported behavior. See `INSTALLER.md` and `docs/REMAINING-WORK.md`.
+
+
+Doctor and uninstall are intentionally non-mutating with respect to system prerequisites: they require an existing compatible Python runtime and never install Git, Python, or uv.
