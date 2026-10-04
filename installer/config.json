@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "frameworkRepositoryUrl": "",
   "frameworkBranch": "main",
-  "aiIndexReleaseApiUrl": "https://gt.qbic.ro/api/v1/repos/qbic/AiIndex/releases/latest",
+  "aiIndexReleaseApiUrl": "https://api.github.com/repos/qbicus/skills/releases/latest",
   "aiIndexChecksumAsset": "SHA256SUMS",
   "graphifyPackage": "graphifyy",
-  "managedSkillPrefix": "company-ai-"
+  "managedSkillPrefix": "qbicus-ai-"
 }
