@@ -5,48 +5,49 @@ Status: **implementation present — Windows live validation next, then Linux li
 The installer owns the global AI framework installation lifecycle for Codex and Claude while preserving unrelated user configuration, skills, MCP registrations, repository overrides, and project indexes.
 
 
-## Implementation status snapshot — 2026-10-04
+## Implementation status snapshot — 2026-10-16
 
-Implemented in this pass:
+Implemented:
 
-- shared lifecycle core: `installer/installer.py`;
-- Windows bootstrap: `install.ps1`;
-- Linux bootstrap: `install.sh`;
-- Install / Update / Repair / Uninstall / Doctor command surfaces;
-- Codex / Claude / both target selection;
-- low / medium / high profile selection and persistence;
-- prerequisite bootstrap for Git + `uv`;
-- shared-skill linking while preserving unrelated skills;
-- Codex native rendering + targeted TOML merge/restore;
-- Claude native rendering + targeted JSON merge/restore;
-- installer state under `~/.ai/local/installer-state.json`;
-- Graphify installation/update through `uv tool install --upgrade graphifyy` plus per-client integration;
-- AiIndex release download/checksum/extraction path with private Gitea token support;
-- AiIndex MCP wiring for Codex and Claude where client capabilities permit;
-- dry-run and non-interactive flags;
-- initial Doctor/Status output;
-- isolated Linux lifecycle tests and installer-core unit tests.
+- shared Python lifecycle core (`installer/installer.py`);
+- Windows bootstrap + interactive maintenance console (`install.ps1`);
+- Linux bootstrap/non-interactive lifecycle (`install.sh`);
+- Install / Update / Repair / Change profiles / Check for updates / Uninstall / Doctor;
+- Windows keyboard UI with Up/Down, Space multi-select, Enter and Esc;
+- framework/AiIndex version display from `version.json` + installer state;
+- canonical repository `https://github.com/qbicus/skills.git`;
+- canonical skill names with explicit per-client ownership tracking;
+- adoption of correct existing skill links/junctions and safe repair of wrong-target framework links;
+- profile-preserving Update / Repair;
+- incremental AiIndex install/repair/update with SHA-256 verification and current-version skip;
+- Graphify preservation when already installed/configured;
+- Codex + Claude native rendering and targeted config merge;
+- framework/AiIndex update status and selective update actions;
+- preview/dry-run support;
+- non-interactive CLI compatibility;
+- Python/Git/uv bootstrap and permanent uninstall preservation.
 
-Still requiring real-environment validation/hardening before release:
+Still to do / validate:
 
-- run the full lifecycle on the user's Windows Codex installation without losing existing config;
-- verify Windows Git/uv bootstrap on a machine where either is absent;
-- verify AiIndex private release asset names/API against an actual published release;
-- verify Claude MCP/Graphify integration on a real Claude installation when desired;
-- run the full Linux lifecycle on a real Linux machine;
-- add deeper drift/hash reporting and model-availability probing to Doctor;
-- decide/embed the canonical framework repository URL for one-line pipe bootstrap;
-- optionally add shared-runtime purge/removal after the last client is uninstalled;
-- complete platform matrix and failure-case tests below.
+- live-test the new Windows interactive menu and Codex lifecycle;
+- live-test Windows Claude install/repair/profile/uninstall wiring;
+- finish optional shared-component purge UX after the last client is removed;
+- implement the equivalent interactive Linux menu;
+- live-test Linux Codex lifecycle;
+- live-test Linux Claude when a test installation is available;
+- deeper drift/hash/model-availability diagnostics can be added after lifecycle validation.
 
 ## 1. Supported operations
 
-Implement four top-level operations:
+Implemented top-level operations:
 
-- [ ] **Install**
-- [ ] **Update / Repair**
-- [ ] **Uninstall**
-- [ ] **Doctor / Status**
+- [x] **Install**
+- [x] **Update / Repair**
+- [x] **Change profiles**
+- [x] **Check for updates**
+- [x] **Uninstall**
+- [x] **Doctor / Status**
+- [x] **Preview changes** in the Windows interactive UI
 
 `Update / Repair` is intentionally one operation: it upgrades installer-owned framework/runtime files when newer content exists and also reapplies/repairs missing, stale, or corrupted installer-owned wiring without disturbing unrelated user content.
 
@@ -185,7 +186,7 @@ For each selected client:
 - [ ] Explain `low` as quota/usage-saving and `high` as quality-first.
 - [ ] Persist the installer-selected active profile in installer state and `~/.ai/local/provider-profiles.json` (or via `ai.py provider --set-profile`).
 - [ ] Allow different profiles for Codex and Claude when target is `both`.
-- [ ] During **Update / Repair**, allow keeping the current profile or switching profiles.
+- [x] During **Update / Repair**, preserve the current profile automatically; use **Change profiles** for deliberate profile changes.
 - [ ] Re-render native client wiring whenever the selected profile changes.
 - [ ] Preserve repo-local generic/profile-specific overrides.
 

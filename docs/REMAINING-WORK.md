@@ -1,9 +1,9 @@
 # AI Framework — Remaining Work
 
-Status: **Codex runtime/E2E verified, profile-aware routing added — deferred Claude E2E + installer pending**
+Status: **Codex runtime/E2E verified; Windows installer implementation complete pending live validation; Claude E2E deferred; Linux interactive UI pending**
 
 
-> 2026-10-04 update: provider routing, native Codex/Claude agent generation, strict runtime fallback orchestration, substantial-work advisor checkpoints, bounded workers, and plan-controlled parallel execution are implemented. Live Codex validation now covers native role invocation, model fallback, substantial `new-feature`, researcher/executor delegation, advisor plan/completion checkpoints, and explicit parallel execution. Claude implementation remains statically validated but live E2E is intentionally deferred to avoid company-limit usage. Installation/update lifecycle remains owned by `INSTALLER.md`.
+> 2026-10-16 update: provider routing, native Codex/Claude agent generation, strict runtime fallback orchestration, substantial-work advisor checkpoints, bounded workers, and plan-controlled parallel execution are implemented. Live Codex validation now covers native role invocation, model fallback, substantial `new-feature`, researcher/executor delegation, advisor plan/completion checkpoints, and explicit parallel execution. Claude implementation remains statically validated but live E2E is intentionally deferred to avoid company-limit usage. Windows installer core + interactive UI are implemented and now require live validation; Linux interactive UI remains to be completed. Installation/update lifecycle remains owned by `INSTALLER.md`.
 
 This checklist tracks the remaining work after the provider-neutral role model, advisor skill, substantial-work marker, bounded workers, plan-controlled parallel execution, provider config files, README/help updates, and initial skill standardization were added.
 
@@ -215,7 +215,7 @@ ai.py help
 
 ## 14. README / HELP finalization
 
-- [ ] Replace installation placeholder once installer work is complete.
+- [x] Replace installation placeholder with the implemented installer commands/interactive Windows flow.
 - [x] Document runtime role routing after native Codex/Claude integration exists.
 - [x] Document provider detection and explicit override.
 - [x] Document low/medium/high usage profiles.
@@ -279,9 +279,9 @@ ai.py help
 - [ ] Ensure provider configs are included in the distributed framework.
 - [ ] Ensure the advisor skill is included in the distributed skill set.
 - [ ] Ensure HELP/README ship with the framework.
-- [ ] Ensure installers place/update provider files correctly.
+- [x] Ensure installers place/update provider files correctly.
 - [ ] Ensure Update / Repair preserves repo overrides and unrelated user content.
-- [ ] Ensure uninstall removes only installer-owned resources.
+- [x] Implement uninstall ownership tracking so only installer-managed resources are removed; live validation remains.
 
 See `INSTALLER.md` for the installer-specific checklist.
 
@@ -310,4 +310,4 @@ See `INSTALLER.md` for the installer-specific checklist.
 - [ ] Claude fallback behavior is live verified.
 - [ ] Cross-provider review is completed.
 - [ ] Installer **Install / Update / Repair / Uninstall / Doctor** lifecycle passes for selected clients.
-- [ ] README installation placeholder is replaced with the implemented installer instructions.
+- [x] README installation placeholder is replaced with the implemented installer instructions.

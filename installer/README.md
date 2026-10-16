@@ -2,77 +2,109 @@
 
 Public bootstrap entry points:
 
-- `install.ps1` — Windows
-- `install.sh` — Linux/macOS-compatible shell bootstrap (Linux is the first validated target)
+- `install.ps1` — Windows interactive + non-interactive installer
+- `install.sh` — Linux shell bootstrap / non-interactive lifecycle entry point
 
-Both ensure the shared prerequisites (Git, compatible Python, and `uv`) and then hand off to the shared `installer/installer.py` lifecycle core using the installed Python runtime.
+Both use the shared `installer/installer.py` lifecycle core. The framework requires Git, Python 3.11+, and `uv`; bootstrap installs missing prerequisites where supported. Python, Git, and `uv` are never removed by framework uninstall.
 
 ## Lifecycle
 
 ```text
 install
 update-repair
+change-profile
+check-updates
 uninstall
 doctor
 ```
 
-Targets:
+Windows with no arguments opens the interactive maintenance console:
 
-```text
-codex
-claude
-both
+```powershell
+.\install.ps1
 ```
 
-Profiles:
+Menu:
 
 ```text
-low
-medium
-high
+Install
+Update / Repair
+Change profiles
+Check for updates
+Uninstall
+Doctor
+Preview changes
+Exit
 ```
+
+Targets are `codex`, `claude`, or `both`. Profiles are `low`, `medium`, or `high`.
 
 ## Examples
 
 Windows:
 
 ```powershell
-.\install.ps1 install -Target codex -Profile low
-.\install.ps1 update-repair -Target both
+.\install.ps1 install -Target codex -Profile low -Yes
+.\install.ps1 update-repair -Target both -Yes
+.\install.ps1 change-profile -Target codex -Profile medium -Yes
+.\install.ps1 check-updates
 .\install.ps1 doctor
 ```
 
 Linux:
 
 ```bash
-./install.sh install --target codex --profile low
-./install.sh update-repair --target both
+./install.sh install --target codex --profile low --yes
+./install.sh update-repair --target both --yes
+./install.sh change-profile --target codex --profile medium --yes
+./install.sh check-updates
 ./install.sh doctor
 ```
 
+## Repository and versions
+
+Canonical framework repository:
+
+```text
+https://github.com/qbicus/skills.git
+```
+
+`version.json` contains the framework version and bundled/expected AiIndex release tag. The installer compares the local framework version to the repository's `version.json`, and the installed AiIndex version to the latest GitHub release.
+
+AiIndex release API:
+
+```text
+https://api.github.com/repos/qbicus/skills/releases/latest
+```
+
+Release downloads are checksum-verified with `SHA256SUMS`.
+
+## Skill ownership
+
+Framework skills keep their canonical names (`new-feature`, `debug`, `advisor`, etc.). The installer never prefixes skill names. Correct existing links/junctions are adopted; broken or wrong-target framework links are repaired; unrelated real directories are preserved and reported as conflicts.
+
+Managed skill names are recorded per client in `~/.ai/local/installer-state.json` so uninstall removes only installer-managed framework links.
+
+## Update / Repair
+
+Update / Repair preserves the currently selected provider profile unless an explicit profile override is supplied. It repairs missing/broken installer-owned wiring and skips a healthy current AiIndex runtime.
+
+The interactive Windows flow checks for available Framework/AiIndex updates and asks whether to include them in the repair.
+
+## Graphify
+
+The Python package is `graphifyy`; the CLI is `graphify`.
+
+An existing Graphify tool and existing client skill integration are preserved. The installer only installs the Graphify tool or client integration when missing.
+
 ## Shared state
 
-Installer-owned state is recorded under `~/.ai/local/installer-state.json`. Generated client wiring lives under `~/.ai/generated/` and is disposable/rebuildable.
+Installer-owned state is recorded under:
 
-The installer does not own repository-local `.ai/providers/`, `.ai-index.json`, or `.ai-index/`.
+```text
+~/.ai/local/installer-state.json
+```
 
-## Current release configuration requirement
+Generated native provider wiring lives under `~/.ai/generated/` and is disposable/rebuildable.
 
-For a raw pipe bootstrap, the framework repository URL must be available via `AI_FRAMEWORK_REPO_URL` (or be embedded before publishing the bootstrap script). Existing checkouts do not need this variable.
-
-AiIndex latest-release resolution defaults to the configured Gitea API in `installer/config.json`; set `AIINDEX_GITEA_TOKEN` only when that private release endpoint requires authentication.
-
-## Bootstrap prerequisites
-
-The framework itself uses Python, so Python is a first-class prerequisite rather than an installer-only runtime.
-
-- Existing Python `>= 3.11` is accepted and left unchanged.
-- On Windows, a missing/unsupported Python is installed from the highest stable `Python.Python.3.x` package currently available through `winget`.
-- On Linux, a missing/unsupported Python is installed using the distribution package manager (`apt`, `dnf`, `yum`, `pacman`, `zypper`, or `apk`). The resulting interpreter must be Python 3.11 or newer.
-- Git and `uv` are installed when missing.
-- Python, Git, and `uv` are never removed by framework uninstall, even when the bootstrap originally installed them.
-
-The installer records whether those prerequisites were pre-existing or installed by the framework bootstrap for diagnostics only.
-
-
-Doctor and uninstall are intentionally non-mutating with respect to system prerequisites: they require an existing compatible Python runtime and never install Git, Python, or uv.
+The installer never owns or removes repository-local `.ai/providers/`, `.ai-index.json`, or `.ai-index/`.

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "installer" / "installer.py"
@@ -58,6 +60,118 @@ class InstallerCoreTests(unittest.TestCase):
         state = installer.default_state()
         self.assertIn("prerequisites", state)
         self.assertEqual(state["prerequisites"], {})
+
+
+    def test_framework_semver_comparison(self):
+        self.assertTrue(installer.newer_framework_version("0.1.0", "0.2.0"))
+        self.assertFalse(installer.newer_framework_version("0.2.0", "0.2.0"))
+        self.assertFalse(installer.newer_framework_version("1.0.0", "0.9.0"))
+
+    def test_framework_version_url_from_repo(self):
+        cfg = {"frameworkRepositoryUrl": "https://github.com/qbicus/skills.git", "frameworkBranch": "main"}
+        self.assertEqual(
+            installer.framework_version_url(cfg),
+            "https://raw.githubusercontent.com/qbicus/skills/main/version.json",
+        )
+
+    def test_wire_skills_adopts_existing_canonical_link(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "framework"
+            skill = root / "skills" / "debug"
+            skill.mkdir(parents=True)
+            (skill / "SKILL.md").write_text("# debug\n", encoding="utf-8")
+            codex = Path(tmp) / "codex"
+            link = codex / "skills" / "debug"
+            link.parent.mkdir(parents=True)
+            link.symlink_to(skill, target_is_directory=True)
+            state = {"managedSkills": {"codex": [], "claude": []}, "links": []}
+            old_root = installer.FRAMEWORK_ROOT
+            try:
+                installer.FRAMEWORK_ROOT = root
+                with mock.patch.dict(os.environ, {"CODEX_HOME": str(codex)}):
+                    installer.wire_skills("codex", state, False)
+                self.assertEqual(state["managedSkills"]["codex"], ["debug"])
+                self.assertIn(str(link), state["links"])
+            finally:
+                installer.FRAMEWORK_ROOT = old_root
+
+    def test_wire_skills_repairs_wrong_target_symlink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "framework"
+            skill = root / "skills" / "debug"
+            skill.mkdir(parents=True)
+            (skill / "SKILL.md").write_text("# debug\n", encoding="utf-8")
+            wrong = Path(tmp) / "wrong"
+            wrong.mkdir()
+            codex = Path(tmp) / "codex"
+            link = codex / "skills" / "debug"
+            link.parent.mkdir(parents=True)
+            link.symlink_to(wrong, target_is_directory=True)
+            state = {"managedSkills": {"codex": [], "claude": []}, "links": []}
+            old_root = installer.FRAMEWORK_ROOT
+            try:
+                installer.FRAMEWORK_ROOT = root
+                with mock.patch.dict(os.environ, {"CODEX_HOME": str(codex)}):
+                    installer.wire_skills("codex", state, False)
+                self.assertEqual(link.resolve(), skill.resolve())
+            finally:
+                installer.FRAMEWORK_ROOT = old_root
+
+    def test_aiindex_current_version_skips_download(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            (bin_dir / "aiindex").write_text("x", encoding="utf-8")
+            (bin_dir / "aiindex-mcp").write_text("x", encoding="utf-8")
+            state = {"aiIndex": {"version": "aiindex-2026.09.22"}}
+            release = {
+                "tag_name": "aiindex-2026.09.22",
+                "assets": [
+                    {"name": "aiindex-linux-x64.tar.gz", "browser_download_url": "x"},
+                    {"name": "SHA256SUMS", "browser_download_url": "y"},
+                ],
+            }
+            old_root = installer.FRAMEWORK_ROOT
+            try:
+                installer.FRAMEWORK_ROOT = root
+                with mock.patch.object(installer, "latest_aiindex_release", return_value=release), \
+                     mock.patch.object(installer, "platform_rid", return_value=("linux-x64", "tar.gz")), \
+                     mock.patch.object(installer, "download") as download_mock:
+                    mcp, info = installer.install_aiindex({"aiIndexReleaseApiUrl": "x"}, state, False, False)
+                self.assertEqual(info["status"], "current")
+                self.assertTrue(mcp.exists())
+                download_mock.assert_not_called()
+            finally:
+                installer.FRAMEWORK_ROOT = old_root
+
+    def test_aiindex_can_preserve_older_healthy_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            (bin_dir / "aiindex").write_text("x", encoding="utf-8")
+            (bin_dir / "aiindex-mcp").write_text("x", encoding="utf-8")
+            state = {"aiIndex": {"version": "aiindex-2026.09.22", "asset": "old"}}
+            release = {
+                "tag_name": "aiindex-2026.10.16",
+                "assets": [
+                    {"name": "aiindex-linux-x64.tar.gz", "browser_download_url": "x"},
+                    {"name": "SHA256SUMS", "browser_download_url": "y"},
+                ],
+            }
+            old_root = installer.FRAMEWORK_ROOT
+            try:
+                installer.FRAMEWORK_ROOT = root
+                with mock.patch.object(installer, "latest_aiindex_release", return_value=release), \
+                     mock.patch.object(installer, "platform_rid", return_value=("linux-x64", "tar.gz")), \
+                     mock.patch.object(installer, "download") as download_mock:
+                    _, info = installer.install_aiindex({"aiIndexReleaseApiUrl": "x"}, state, False, False, allow_update=False)
+                self.assertEqual(info["status"], "update-available")
+                self.assertEqual(info["version"], "aiindex-2026.09.22")
+                download_mock.assert_not_called()
+            finally:
+                installer.FRAMEWORK_ROOT = old_root
 
 
 if __name__ == "__main__":

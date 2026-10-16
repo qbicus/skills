@@ -4,5 +4,6 @@
   "frameworkBranch": "main",
   "aiIndexReleaseApiUrl": "https://api.github.com/repos/qbicus/skills/releases/latest",
   "aiIndexChecksumAsset": "SHA256SUMS",
-  "graphifyPackage": "graphifyy"
+  "graphifyPackage": "graphifyy",
+  "frameworkVersionUrl": "https://raw.githubusercontent.com/qbicus/skills/main/version.json"
 }

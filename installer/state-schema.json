@@ -86,6 +86,32 @@
         }
       },
       "additionalProperties": true
+    },
+    "frameworkVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "managedSkills": {
+      "type": "object",
+      "properties": {
+        "codex": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "claude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": true

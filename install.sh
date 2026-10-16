@@ -6,19 +6,23 @@ TARGET=""
 PROFILE=""
 CODEX_PROFILE=""
 CLAUDE_PROFILE=""
-REPOSITORY_URL="${AI_FRAMEWORK_REPO_URL:-}"
+REPOSITORY_URL="${AI_FRAMEWORK_REPO_URL:-https://github.com/qbicus/skills.git}"
 YES=0
 DRY_RUN=0
 VERBOSE=0
 SKIP_AIINDEX=0
 SKIP_GRAPHIFY=0
+SKIP_FRAMEWORK_UPDATE=0
+NO_AIINDEX_UPDATE=0
+APPLY=""
+JSON_OUTPUT=0
 FRAMEWORK_ROOT="${HOME}/.ai"
 MIN_PYTHON_MAJOR=3
 MIN_PYTHON_MINOR=11
 
 usage() {
   cat <<'EOF'
-Usage: install.sh [install|update-repair|uninstall|doctor] [options]
+Usage: install.sh [install|update-repair|change-profile|check-updates|uninstall|doctor] [options]
 
 Options:
   --target codex|claude|both
@@ -31,6 +35,10 @@ Options:
   --verbose
   --skip-aiindex
   --skip-graphify
+  --skip-framework-update
+  --no-aiindex-update
+  --apply framework|aiindex|both
+  --json-output
 EOF
 }
 
@@ -47,12 +55,16 @@ while [[ $# -gt 0 ]]; do
     --verbose) VERBOSE=1; shift ;;
     --skip-aiindex) SKIP_AIINDEX=1; shift ;;
     --skip-graphify) SKIP_GRAPHIFY=1; shift ;;
+    --skip-framework-update) SKIP_FRAMEWORK_UPDATE=1; shift ;;
+    --no-aiindex-update) NO_AIINDEX_UPDATE=1; shift ;;
+    --apply) APPLY="$2"; shift 2 ;;
+    --json-output) JSON_OUTPUT=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 
-case "$ACTION" in install|update-repair|uninstall|doctor) ;; *) echo "Invalid action: $ACTION" >&2; exit 2 ;; esac
+case "$ACTION" in install|update-repair|change-profile|check-updates|uninstall|doctor) ;; *) echo "Invalid action: $ACTION" >&2; exit 2 ;; esac
 if [[ -n "$TARGET" ]]; then case "$TARGET" in codex|claude|both) ;; *) echo "Invalid target: $TARGET" >&2; exit 2 ;; esac; fi
 
 say() { printf '==> %s\n' "$*"; }
@@ -170,7 +182,7 @@ resolve_root() {
   if [[ -f "$FRAMEWORK_ROOT/installer/installer.py" ]]; then echo "$FRAMEWORK_ROOT"; return 0; fi
   if [[ -n "$script_dir" && -f "$script_dir/installer/installer.py" ]]; then
     if [[ "$script_dir" == "$FRAMEWORK_ROOT" ]]; then echo "$script_dir"; return 0; fi
-    if [[ "$ACTION" == "doctor" || "$ACTION" == "uninstall" ]]; then echo "$script_dir"; return 0; fi
+    if [[ "$ACTION" == "doctor" || "$ACTION" == "uninstall" || "$ACTION" == "check-updates" || "$ACTION" == "change-profile" ]]; then echo "$script_dir"; return 0; fi
     [[ "$DRY_RUN" -eq 1 ]] && { echo "$script_dir"; return 0; }
     [[ -e "$FRAMEWORK_ROOT" ]] && { echo "$FRAMEWORK_ROOT exists but is not a valid framework installation." >&2; exit 2; }
     say "Installing framework from local checkout" >&2
@@ -178,7 +190,7 @@ resolve_root() {
     echo "$FRAMEWORK_ROOT"; return 0
   fi
   if [[ -z "$REPOSITORY_URL" ]]; then
-    if [[ "$ACTION" == "doctor" || "$ACTION" == "uninstall" ]]; then
+    if [[ "$ACTION" == "doctor" || "$ACTION" == "uninstall" || "$ACTION" == "check-updates" || "$ACTION" == "change-profile" ]]; then
       echo "No installed framework was found at $FRAMEWORK_ROOT. Run doctor/uninstall from an installed or local framework checkout." >&2
       exit 2
     fi
@@ -223,6 +235,10 @@ ARGS=("$INSTALLER" "$ACTION")
 [[ "$VERBOSE" -eq 1 ]] && ARGS+=(--verbose)
 [[ "$SKIP_AIINDEX" -eq 1 ]] && ARGS+=(--skip-aiindex)
 [[ "$SKIP_GRAPHIFY" -eq 1 ]] && ARGS+=(--skip-graphify)
+[[ "$SKIP_FRAMEWORK_UPDATE" -eq 1 ]] && ARGS+=(--skip-framework-update)
+[[ "$NO_AIINDEX_UPDATE" -eq 1 ]] && ARGS+=(--no-aiindex-update)
+[[ -n "$APPLY" ]] && ARGS+=(--apply "$APPLY")
+[[ "$JSON_OUTPUT" -eq 1 ]] && ARGS+=(--json-output)
 
 say "$ACTION"
 exec "$PYTHON_EXE" "${ARGS[@]}"

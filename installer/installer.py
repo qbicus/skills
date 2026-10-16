@@ -23,6 +23,7 @@ FRAMEWORK_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = FRAMEWORK_ROOT / "installer" / "config.json"
 STATE_PATH = FRAMEWORK_ROOT / "local" / "installer-state.json"
 PROFILES_PATH = FRAMEWORK_ROOT / "local" / "provider-profiles.json"
+VERSION_PATH = FRAMEWORK_ROOT / "version.json"
 MANAGED_BEGIN = "# BEGIN COMPANY AI FRAMEWORK"
 MANAGED_END = "# END COMPANY AI FRAMEWORK"
 
@@ -86,13 +87,56 @@ def git_commit(root: Path) -> str | None:
     return proc.stdout.strip() if proc.returncode == 0 else None
 
 
+
+
+def local_versions() -> dict[str, str | None]:
+    data = load_json(VERSION_PATH, {})
+    return {
+        "framework": data.get("framework"),
+        "aiIndex": data.get("aiIndex"),
+    }
+
+
+def framework_version_url(config: dict[str, Any]) -> str | None:
+    explicit = config.get("frameworkVersionUrl")
+    if explicit:
+        return str(explicit)
+    repo = str(config.get("frameworkRepositoryUrl") or "")
+    branch = str(config.get("frameworkBranch") or "main")
+    match = re.match(r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$", repo)
+    if not match:
+        return None
+    owner, name = match.groups()
+    return f"https://raw.githubusercontent.com/{owner}/{name}/{branch}/version.json"
+
+
+def normalize_version_tuple(value: str | None) -> tuple[int, ...] | None:
+    if not value:
+        return None
+    m = re.fullmatch(r"v?(\d+(?:\.\d+)*)", value.strip())
+    if not m:
+        return None
+    return tuple(int(part) for part in m.group(1).split("."))
+
+
+def newer_framework_version(current: str | None, latest: str | None) -> bool:
+    cur = normalize_version_tuple(current)
+    new = normalize_version_tuple(latest)
+    if cur is not None and new is not None:
+        width = max(len(cur), len(new))
+        return cur + (0,) * (width - len(cur)) < new + (0,) * (width - len(new))
+    return bool(latest and current != latest)
+
+
 def default_state() -> dict[str, Any]:
     return {
         "schemaVersion": 1,
         "frameworkRoot": str(FRAMEWORK_ROOT),
         "frameworkCommit": git_commit(FRAMEWORK_ROOT),
+        "frameworkVersion": load_json(VERSION_PATH, {}).get("framework"),
         "installedClients": [],
         "profiles": {},
+        "managedSkills": {"codex": [], "claude": []},
         "links": [],
         "configOwnership": {},
         "aiIndex": {},
@@ -107,6 +151,9 @@ def load_state() -> dict[str, Any]:
     base = default_state()
     for key, value in base.items():
         state.setdefault(key, value)
+    managed = state.setdefault("managedSkills", {})
+    managed.setdefault("codex", [])
+    managed.setdefault("claude", [])
     return state
 
 
@@ -242,14 +289,44 @@ def remove_managed_markdown(path: Path, dry_run: bool) -> None:
             path.write_text(updated, encoding="utf-8")
 
 
+def is_directory_link(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    if callable(is_junction):
+        try:
+            return bool(is_junction())
+        except OSError:
+            return False
+    return False
+
+
 def create_dir_link(link: Path, target: Path, dry_run: bool) -> str:
+    """Create/adopt/repair a client skill directory link.
+
+    Correct existing links are adopted. Wrong-target symlinks/junctions are
+    repaired. Real directories are never replaced because they may be owned by
+    the user or another tool.
+    """
     if link.exists() or link.is_symlink():
         try:
             if link.resolve() == target.resolve():
-                return "existing"
+                print(f"  {'would adopt' if dry_run else 'adopted'} existing skill link {link}")
+                return "adopted"
         except OSError:
             pass
-        raise RuntimeError(f"Refusing to replace unrelated existing path: {link}")
+        if is_directory_link(link):
+            print(f"  {'would repair' if dry_run else 'repairing'} wrong-target skill link {link} -> {target}")
+            if not dry_run:
+                if link.is_symlink():
+                    link.unlink()
+                else:
+                    os.rmdir(link)
+        else:
+            raise RuntimeError(
+                f"Refusing to replace unrelated existing skill directory: {link}. "
+                "Move/rename it and rerun Update / Repair."
+            )
     print(f"  {'would link' if dry_run else 'linked'} {link} -> {target}")
     if dry_run:
         return "planned"
@@ -259,7 +336,6 @@ def create_dir_link(link: Path, target: Path, dry_run: bool) -> str:
     else:
         link.symlink_to(target, target_is_directory=True)
     return "created"
-
 
 def create_file_link_or_copy(link: Path, target: Path, dry_run: bool) -> str:
     if link.exists() or link.is_symlink():
@@ -291,10 +367,22 @@ def remove_owned_path(path: Path, dry_run: bool) -> None:
         return
     if path.is_symlink() or path.is_file():
         path.unlink()
-    elif os.name == "nt":
-        os.rmdir(path)  # junction: remove link only
+    elif os.name == "nt" and hasattr(path, "is_junction") and path.is_junction():
+        # Windows directory junctions must be removed as links only; recursively
+        # deleting them could delete the junction target instead.
+        os.rmdir(path)
     else:
+        # Normal directories (including generated native wiring) own their
+        # contents and should be removed recursively.
         shutil.rmtree(path)
+
+
+def client_root(client: str) -> Path:
+    if client == "codex":
+        return Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))
+    if client == "claude":
+        return Path(os.environ.get("CLAUDE_HOME", str(Path.home() / ".claude")))
+    raise RuntimeError(f"Unsupported client: {client}")
 
 
 def list_skills() -> list[Path]:
@@ -306,14 +394,67 @@ def list_skills() -> list[Path]:
 
 
 def wire_skills(client: str, state: dict[str, Any], dry_run: bool) -> None:
-    home = Path.home()
-    client_root = home / (".codex" if client == "codex" else ".claude")
-    skill_root = client_root / "skills"
+    skill_root = client_root(client) / "skills"
+    managed = state.setdefault("managedSkills", {}).setdefault(client, [])
     for skill in list_skills():
         link = skill_root / skill.name
         outcome = create_dir_link(link, skill, dry_run)
-        if outcome == "created" and str(link) not in state["links"]:
+        if dry_run:
+            continue
+        if skill.name not in managed:
+            managed.append(skill.name)
+        if str(link) not in state.setdefault("links", []):
             state["links"].append(str(link))
+
+
+def skill_health(client: str, state: dict[str, Any]) -> tuple[int, int, list[str]]:
+    skill_root = client_root(client) / "skills"
+    expected = list_skills()
+    issues: list[str] = []
+    healthy = 0
+    for skill in expected:
+        link = skill_root / skill.name
+        if not (link.exists() or link.is_symlink()):
+            issues.append(f"{skill.name}: missing")
+            continue
+        try:
+            if link.resolve() == skill.resolve():
+                healthy += 1
+            else:
+                issues.append(f"{skill.name}: wrong target")
+        except OSError:
+            issues.append(f"{skill.name}: broken")
+    return healthy, len(expected), issues
+
+
+def remove_managed_skills(client: str, state: dict[str, Any], dry_run: bool) -> None:
+    root = client_root(client) / "skills"
+    # Include canonical framework skills as well as recorded managed skills.
+    # This safely cleans legacy/adoptable links created before installer ownership
+    # tracking was complete, but only when the link resolves exactly to the
+    # matching framework skill directory.
+    recorded = set(state.get("managedSkills", {}).get(client, []))
+    canonical = {skill.name for skill in list_skills()}
+    names = sorted(recorded | canonical)
+    for name in names:
+        path = root / name
+        target = FRAMEWORK_ROOT / "skills" / name
+        if not (path.exists() or path.is_symlink()):
+            continue
+        try:
+            points_to_framework = path.resolve() == target.resolve()
+        except OSError:
+            points_to_framework = is_directory_link(path)
+        if not points_to_framework:
+            print(f"  WARNING: preserving managed skill path with unexpected target: {path}")
+            continue
+        remove_owned_path(path, dry_run)
+        if not dry_run:
+            raw = str(path)
+            if raw in state.get("links", []):
+                state["links"].remove(raw)
+    if not dry_run:
+        state.setdefault("managedSkills", {})[client] = []
 
 
 def set_profile(client: str, profile: str, dry_run: bool) -> None:
@@ -431,12 +572,13 @@ def remove_codex_owned_sections(text: str) -> str:
     return mcp.sub("", text)
 
 
-def wire_codex(profile: str, state: dict[str, Any], dry_run: bool, aiindex_mcp: Path | None) -> None:
+def wire_codex(profile: str, state: dict[str, Any], dry_run: bool, aiindex_mcp: Path | None, *, wire_shared: bool = True) -> None:
     generated = render_native("codex", profile, dry_run)
-    config = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "config.toml"
+    config = client_root("codex") / "config.toml"
     instructions = config.parent / "AGENTS.md"
-    managed_markdown(instructions, (FRAMEWORK_ROOT / "AGENTS.md").read_text(encoding="utf-8"), dry_run)
-    wire_skills("codex", state, dry_run)
+    if wire_shared:
+        managed_markdown(instructions, (FRAMEWORK_ROOT / "AGENTS.md").read_text(encoding="utf-8"), dry_run)
+        wire_skills("codex", state, dry_run)
     if dry_run:
         print(f"  would merge Codex native config into {config}")
         return
@@ -469,7 +611,7 @@ def wire_codex(profile: str, state: dict[str, Any], dry_run: bool, aiindex_mcp: 
 
 
 def restore_codex(state: dict[str, Any], dry_run: bool) -> None:
-    config = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))) / "config.toml"
+    config = client_root("codex") / "config.toml"
     remove_managed_markdown(config.parent / "AGENTS.md", dry_run)
     if config.exists():
         text = config.read_text(encoding="utf-8")
@@ -485,15 +627,44 @@ def restore_codex(state: dict[str, Any], dry_run: bool) -> None:
         print(f"  {'would clean' if dry_run else 'cleaned'} {config}")
 
 
-def wire_claude(profile: str, state: dict[str, Any], dry_run: bool, aiindex_mcp: Path | None) -> None:
+def claude_aiindex_mcp_is_current(aiindex_mcp: Path) -> bool:
+    """Return True when Claude already has the expected user-scoped AiIndex MCP entry.
+
+    Claude stores user MCP registrations in ~/.claude.json.  Treat extra fields such
+    as an empty env object as compatible; only the transport, command and arguments
+    determine whether the framework needs to repair the registration.
+    """
+    config = load_json(Path.home() / ".claude.json", {})
+    entry = config.get("mcpServers", {}).get("aiindex")
+    if not isinstance(entry, dict):
+        return False
+
+    command = entry.get("command")
+    args = entry.get("args", [])
+    return (
+        entry.get("type", "stdio") == "stdio"
+        and isinstance(command, str)
+        and os.path.normcase(os.path.normpath(command))
+        == os.path.normcase(os.path.normpath(str(aiindex_mcp)))
+        and (args is None or args == [])
+    )
+
+
+def wire_claude(profile: str, state: dict[str, Any], dry_run: bool, aiindex_mcp: Path | None, *, wire_shared: bool = True) -> None:
     generated = render_native("claude", profile, dry_run)
-    root = Path.home() / ".claude"
+    root = client_root("claude")
     settings = root / "settings.json"
     instructions = root / "CLAUDE.md"
-    managed_markdown(instructions, f"@{(FRAMEWORK_ROOT / 'CLAUDE.md').as_posix()}", dry_run)
-    wire_skills("claude", state, dry_run)
+    if wire_shared:
+        managed_markdown(instructions, f"@{(FRAMEWORK_ROOT / 'CLAUDE.md').as_posix()}", dry_run)
+        wire_skills("claude", state, dry_run)
     if dry_run:
         print(f"  would merge Claude settings into {settings}")
+        if aiindex_mcp and which("claude"):
+            if claude_aiindex_mcp_is_current(aiindex_mcp):
+                print(f"  would preserve existing Claude AiIndex MCP registration -> {aiindex_mcp}")
+            else:
+                print(f"  would register Claude AiIndex MCP -> {aiindex_mcp}")
         return
     fragment = load_json(generated / "settings.fragment.json", {})
     data = load_json(settings, {})
@@ -520,13 +691,16 @@ def wire_claude(profile: str, state: dict[str, Any], dry_run: bool, aiindex_mcp:
         if outcome.startswith("created") and str(dest) not in state["links"]:
             state["links"].append(str(dest))
     if aiindex_mcp and which("claude"):
-        # Remove only our named registration before re-adding at user scope.
-        run([which("claude") or "claude", "mcp", "remove", "aiindex", "--scope", "user"], check=False, capture=True)
-        run([which("claude") or "claude", "mcp", "add", "--scope", "user", "aiindex", "--", str(aiindex_mcp)], check=False)
+        if claude_aiindex_mcp_is_current(aiindex_mcp):
+            print(f"  preserving existing Claude AiIndex MCP registration -> {aiindex_mcp}")
+        else:
+            # Repair only our named registration, then add the expected user-scoped entry.
+            run([which("claude") or "claude", "mcp", "remove", "aiindex", "--scope", "user"], check=False, capture=True)
+            run([which("claude") or "claude", "mcp", "add", "--scope", "user", "aiindex", "--", str(aiindex_mcp)], check=False)
 
 
 def restore_claude(state: dict[str, Any], dry_run: bool) -> None:
-    root = Path.home() / ".claude"
+    root = client_root("claude")
     remove_managed_markdown(root / "CLAUDE.md", dry_run)
     settings = root / "settings.json"
     if settings.exists():
@@ -592,29 +766,95 @@ def download(url: str, dest: Path) -> None:
         shutil.copyfileobj(response, out)
 
 
-def install_aiindex(config: dict[str, Any], dry_run: bool, skip: bool) -> tuple[Path | None, dict[str, Any]]:
+def latest_aiindex_release(config: dict[str, Any]) -> dict[str, Any]:
+    api = os.environ.get("AIINDEX_RELEASE_API_URL") or config.get("aiIndexReleaseApiUrl")
+    if not api:
+        raise RuntimeError("AiIndex release API not configured")
+    release = urlopen_json(str(api))
+    tag = release.get("tag_name") or release.get("name")
+    if not tag:
+        raise RuntimeError("Latest AiIndex release did not include a tag/name")
+    return release
+
+
+def installed_aiindex_version(state: dict[str, Any], cli: Path, mcp: Path) -> str | None:
+    if not (cli.exists() and mcp.exists()):
+        return None
+    recorded = state.get("aiIndex", {}).get("version")
+    if recorded:
+        return str(recorded)
+    # A manually populated framework checkout may already contain the binaries.
+    # In that case version.json describes the bundled/expected runtime version.
+    return local_versions().get("aiIndex")
+
+
+def install_aiindex(config: dict[str, Any], state: dict[str, Any], dry_run: bool, skip: bool, *, force: bool = False, allow_update: bool = True) -> tuple[Path | None, dict[str, Any]]:
     bin_dir = FRAMEWORK_ROOT / "bin"
     exe = "aiindex-mcp.exe" if os.name == "nt" else "aiindex-mcp"
-    cli = "aiindex.exe" if os.name == "nt" else "aiindex"
+    cli_name = "aiindex.exe" if os.name == "nt" else "aiindex"
     existing_mcp = bin_dir / exe
-    existing_cli = bin_dir / cli
+    existing_cli = bin_dir / cli_name
     if skip:
         return (existing_mcp if existing_mcp.exists() else None), {"skipped": True}
     api = os.environ.get("AIINDEX_RELEASE_API_URL") or config.get("aiIndexReleaseApiUrl")
     if not api:
         print("  AiIndex release API not configured; preserving any existing runtime")
         return (existing_mcp if existing_mcp.exists() else None), {"warning": "release API not configured"}
-    if dry_run:
-        print(f"  would resolve/install latest AiIndex from {api}")
-        return (existing_mcp if existing_mcp.exists() else bin_dir / exe), {"planned": True}
+
+    current = installed_aiindex_version(state, existing_cli, existing_mcp)
+    healthy = existing_cli.exists() and existing_mcp.exists()
     try:
-        release = urlopen_json(api)
+        release = latest_aiindex_release(config)
+        latest = str(release.get("tag_name") or release.get("name"))
         rid, ext = platform_rid()
         asset_name = f"aiindex-{rid}.{'zip' if ext == 'zip' else 'tar.gz'}"
         checksum_name = config.get("aiIndexChecksumAsset", "SHA256SUMS")
         assets = {a.get("name"): a for a in release.get("assets", [])}
         if asset_name not in assets or checksum_name not in assets:
             raise RuntimeError(f"Latest AiIndex release is missing {asset_name} or {checksum_name}")
+
+        if healthy and current == latest and not force:
+            print(f"  AiIndex {latest} already current")
+            return existing_mcp, {
+                "version": latest,
+                "runtimePath": str(bin_dir),
+                "asset": asset_name,
+                "status": "current",
+            }
+
+        if healthy and current != latest and not force and not allow_update:
+            print(f"  AiIndex update available: {current or 'unknown'} -> {latest}; preserving current version")
+            return existing_mcp, {
+                "version": current,
+                "runtimePath": str(bin_dir),
+                "asset": state.get("aiIndex", {}).get("asset"),
+                "status": "update-available",
+                "latest": latest,
+            }
+
+        if dry_run:
+            if not healthy:
+                reason = "missing CLI/MCP binaries"
+                print(f"  would repair AiIndex {latest} ({reason})")
+            elif force:
+                print(f"  would reinstall AiIndex {latest}")
+            else:
+                print(f"  would update AiIndex {current or 'unknown'} -> {latest}")
+            return (existing_mcp if existing_mcp.exists() else bin_dir / exe), {
+                "version": latest,
+                "runtimePath": str(bin_dir),
+                "asset": asset_name,
+                "planned": True,
+            }
+
+        action = "repairing" if not healthy else ("reinstalling" if force else "updating")
+        if not healthy:
+            print(f"  {action} AiIndex -> {latest}")
+        elif current and current != latest:
+            print(f"  {action} AiIndex {current} -> {latest}")
+        else:
+            print(f"  {action} AiIndex {latest}")
+
         with tempfile.TemporaryDirectory(prefix="aiindex-install-") as tmp_s:
             tmp = Path(tmp_s)
             archive = tmp / asset_name
@@ -640,7 +880,7 @@ def install_aiindex(config: dict[str, Any], dry_run: bool, skip: bool) -> tuple[
             else:
                 with tarfile.open(archive, "r:gz") as tf:
                     tf.extractall(extract)
-            found_cli = next((p for p in extract.rglob(cli) if p.is_file()), None)
+            found_cli = next((p for p in extract.rglob(cli_name) if p.is_file()), None)
             found_mcp = next((p for p in extract.rglob(exe) if p.is_file()), None)
             if not found_cli or not found_mcp:
                 raise RuntimeError("AiIndex archive did not contain expected CLI + MCP executables")
@@ -650,14 +890,22 @@ def install_aiindex(config: dict[str, Any], dry_run: bool, skip: bool) -> tuple[
             if os.name != "nt":
                 existing_cli.chmod(existing_cli.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
                 existing_mcp.chmod(existing_mcp.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-            print(f"  installed AiIndex {release.get('tag_name') or release.get('name') or 'latest'} -> {bin_dir}")
-            return existing_mcp, {"version": release.get("tag_name") or release.get("name"), "runtimePath": str(bin_dir), "asset": asset_name}
+            print(f"  installed AiIndex {latest} -> {bin_dir}")
+            return existing_mcp, {
+                "version": latest,
+                "runtimePath": str(bin_dir),
+                "asset": asset_name,
+                "status": "installed",
+            }
     except (urllib.error.URLError, RuntimeError, KeyError, ValueError) as exc:
-        if existing_mcp.exists() and existing_cli.exists():
+        if healthy:
             print(f"  WARNING: AiIndex update unavailable ({exc}); preserving existing runtime")
-            return existing_mcp, {"warning": str(exc), "runtimePath": str(bin_dir)}
+            return existing_mcp, {
+                "version": current,
+                "warning": str(exc),
+                "runtimePath": str(bin_dir),
+            }
         raise RuntimeError(f"AiIndex installation failed: {exc}") from exc
-
 
 
 def ensure_aiindex_cli_path(state: dict[str, Any], dry_run: bool) -> None:
@@ -754,10 +1002,14 @@ def install_graphify(clients: list[str], state: dict[str, Any], dry_run: bool, s
     if not uv:
         raise RuntimeError("uv is required for Graphify but was not found. Bootstrap should install uv first.")
     package = load_json(CONFIG_PATH, {}).get("graphifyPackage", "graphifyy")
-    preexisting = graphify_executable() is not None
+    existing_graphify = graphify_executable()
+    preexisting = existing_graphify is not None
     integration_status = {client: graphify_integration_status(client) for client in clients}
     if dry_run:
-        print(f"  would run: uv tool install --upgrade {package}")
+        if preexisting:
+            print(f"  would preserve existing Graphify tool: {existing_graphify}")
+        else:
+            print(f"  would run: uv tool install {package}")
         for client in clients:
             healthy, detail = integration_status[client]
             if healthy:
@@ -766,10 +1018,10 @@ def install_graphify(clients: list[str], state: dict[str, Any], dry_run: bool, s
                 cmd = _graphify_install_commands("graphify", client)[0]
                 print(f"  would run: {' '.join(cmd)} ({detail})")
         return
-    proc = run([uv, "tool", "install", "--upgrade", package], check=False, capture=True)
-    if proc.returncode != 0 and "already installed" not in (proc.stderr or "").lower():
-        # uv sometimes prefers `uv tool upgrade` for an existing tool.
-        run([uv, "tool", "upgrade", package], check=True)
+    if not existing_graphify:
+        proc = run([uv, "tool", "install", package], check=False, capture=True)
+        if proc.returncode != 0 and "already installed" not in ((proc.stderr or "") + (proc.stdout or "")).lower():
+            raise RuntimeError(f"Graphify install failed: {(proc.stderr or proc.stdout or '').strip()}")
     graphify = graphify_executable()
     if not graphify:
         # uv tool dir --bin is authoritative when current shell PATH has not refreshed.
@@ -810,17 +1062,21 @@ def uninstall_graphify_client(client: str, state: dict[str, Any], dry_run: bool)
         return
     graphify = state.get("graphify", {}).get("executable") or graphify_executable()
     if graphify:
+        command = [graphify, "uninstall", "--platform", client]
         if dry_run:
-            print(f"  would run: {graphify} {client} uninstall")
+            print(f"  would run: {' '.join(command)}")
         else:
-            run([graphify, client, "uninstall"], check=False, capture=True)
+            proc = run(command, check=False, capture=True)
+            if proc.returncode != 0:
+                # Compatibility with older Graphify CLI layouts.
+                run([graphify, client, "uninstall"], check=False, capture=True)
     if not dry_run:
         managed.remove(client)
 
 
 def client_detected(client: str) -> tuple[bool, str]:
     exe = which(client)
-    home = Path.home() / (".codex" if client == "codex" else ".claude")
+    home = client_root(client)
     if exe:
         return True, command_version(client) or "installed"
     if home.exists():
@@ -837,23 +1093,33 @@ def doctor(state: dict[str, Any]) -> int:
     print("AI Framework Doctor")
     print()
     rows: list[tuple[str, str]] = []
+    versions = local_versions()
     rows.append(("Git", command_version("git") or "MISSING"))
     rows.append(("Python", f"{platform.python_version()} ({sys.executable})"))
     rows.append(("uv", command_version("uv") or "MISSING"))
     rows.append(("Framework", str(FRAMEWORK_ROOT)))
+    rows.append(("Framework version", versions.get("framework") or "unknown"))
     rows.append(("Framework git", git_commit(FRAMEWORK_ROOT) or "not a git checkout"))
+    active_profiles = load_active_profiles()
     for client in ("codex", "claude"):
         detected, detail = client_detected(client)
         rows.append((client.capitalize(), detail))
-        active_profiles = load_active_profiles()
         profile = active_profiles.get(client) or state.get("profiles", {}).get(client) or "medium"
-        ok, msg = validate_provider(client, profile)
+        ok, _ = validate_provider(client, profile)
         source = "saved profile" if client in active_profiles else ("installer state" if state.get("profiles", {}).get(client) else "default")
         rows.append((f"{client} profile", f"{profile} ({'OK' if ok else 'INVALID'}; {source})"))
         generated = FRAMEWORK_ROOT / "generated" / client
         rows.append((f"{client} wiring", "OK" if generated.exists() else "missing/generated not rendered"))
+        healthy, total, skill_issues = skill_health(client, state)
+        if total:
+            detail_skills = f"{healthy}/{total} OK"
+            if skill_issues:
+                detail_skills += f" ({len(skill_issues)} issue{'s' if len(skill_issues) != 1 else ''})"
+            rows.append((f"{client} skills", detail_skills))
     ai_bin = FRAMEWORK_ROOT / "bin" / ("aiindex.exe" if os.name == "nt" else "aiindex")
     ai_mcp = FRAMEWORK_ROOT / "bin" / ("aiindex-mcp.exe" if os.name == "nt" else "aiindex-mcp")
+    installed_ai = installed_aiindex_version(state, ai_bin, ai_mcp)
+    rows.append(("AiIndex version", installed_ai or "unknown"))
     rows.append(("AiIndex CLI", "OK" if ai_bin.exists() else "missing"))
     rows.append(("AiIndex MCP", "OK" if ai_mcp.exists() else "missing"))
     graphify = graphify_executable()
@@ -861,8 +1127,110 @@ def doctor(state: dict[str, Any]) -> int:
     width = max(len(k) for k, _ in rows)
     for key, value in rows:
         print(f"{key:<{width}}  {value}")
-    issues = sum(1 for _, value in rows if value == "MISSING" or value.startswith("missing") or "INVALID" in value)
+    issues = 0
+    for key, value in rows:
+        lower = value.lower()
+        if value == "MISSING" or lower.startswith("missing") or "INVALID" in value:
+            issues += 1
+        if key.endswith(" skills") and "issue" in lower:
+            issues += 1
     return 1 if issues else 0
+
+
+def fetch_update_status(state: dict[str, Any]) -> dict[str, Any]:
+    config = load_json(CONFIG_PATH, {})
+    versions = local_versions()
+    result: dict[str, Any] = {
+        "framework": {
+            "current": versions.get("framework"),
+            "latest": None,
+            "updateAvailable": False,
+            "error": None,
+        },
+        "aiIndex": {
+            "current": None,
+            "latest": None,
+            "updateAvailable": False,
+            "healthy": False,
+            "error": None,
+        },
+    }
+    version_url = framework_version_url(config)
+    if version_url:
+        try:
+            remote = urlopen_json(version_url)
+            latest_framework = remote.get("framework")
+            result["framework"]["latest"] = latest_framework
+            result["framework"]["updateAvailable"] = newer_framework_version(versions.get("framework"), latest_framework)
+        except (urllib.error.URLError, RuntimeError, KeyError, ValueError, json.JSONDecodeError) as exc:
+            result["framework"]["error"] = str(exc)
+    else:
+        result["framework"]["error"] = "framework version URL unavailable"
+
+    ai_bin = FRAMEWORK_ROOT / "bin" / ("aiindex.exe" if os.name == "nt" else "aiindex")
+    ai_mcp = FRAMEWORK_ROOT / "bin" / ("aiindex-mcp.exe" if os.name == "nt" else "aiindex-mcp")
+    current_ai = installed_aiindex_version(state, ai_bin, ai_mcp)
+    result["aiIndex"]["current"] = current_ai
+    result["aiIndex"]["healthy"] = ai_bin.exists() and ai_mcp.exists()
+    try:
+        release = latest_aiindex_release(config)
+        latest_ai = release.get("tag_name") or release.get("name")
+        result["aiIndex"]["latest"] = latest_ai
+        result["aiIndex"]["updateAvailable"] = bool(latest_ai and current_ai != latest_ai)
+    except (urllib.error.URLError, RuntimeError, KeyError, ValueError) as exc:
+        result["aiIndex"]["error"] = str(exc)
+    return result
+
+
+def print_update_status(status: dict[str, Any]) -> None:
+    print("Update status")
+    print()
+    fw = status["framework"]
+    ai = status["aiIndex"]
+    if fw.get("error"):
+        fw_text = f"unknown ({fw['error']})"
+    elif fw.get("updateAvailable"):
+        fw_text = f"{fw.get('current') or 'unknown'} -> {fw.get('latest')}  UPDATE AVAILABLE"
+    else:
+        fw_text = f"{fw.get('current') or 'unknown'}  current"
+    if ai.get("error"):
+        ai_text = f"{ai.get('current') or 'unknown'}; latest unknown ({ai['error']})"
+    elif not ai.get("healthy"):
+        ai_text = f"{ai.get('current') or 'not installed'} -> {ai.get('latest') or 'latest'}  REPAIR NEEDED"
+    elif ai.get("updateAvailable"):
+        ai_text = f"{ai.get('current') or 'unknown'} -> {ai.get('latest')}  UPDATE AVAILABLE"
+    else:
+        ai_text = f"{ai.get('current') or 'unknown'}  current"
+    print(f"Framework  {fw_text}")
+    print(f"AiIndex    {ai_text}")
+
+
+def check_updates(args: argparse.Namespace, state: dict[str, Any]) -> int:
+    status = fetch_update_status(state)
+    if args.json_output:
+        print(json.dumps(status))
+        return 0
+    print_update_status(status)
+    if not args.apply:
+        return 0
+    selections = {"framework", "aiindex"} if args.apply == "both" else {args.apply}
+    if "framework" in selections:
+        if status["framework"].get("updateAvailable"):
+            update_framework_from_git(args.dry_run)
+        else:
+            print("  Framework already current; no update needed")
+    if "aiindex" in selections:
+        config = load_json(CONFIG_PATH, {})
+        mcp, ai_state = install_aiindex(config, state, args.dry_run, False)
+        if not args.dry_run:
+            state["aiIndex"] = ai_state
+            ensure_aiindex_cli_path(state, False)
+    if not args.dry_run:
+        state["frameworkVersion"] = local_versions().get("framework")
+        state["frameworkCommit"] = git_commit(FRAMEWORK_ROOT)
+        save_json(STATE_PATH, state)
+    print("Preview complete. No changes were made." if args.dry_run else "Selected updates complete.")
+    return 0
 
 
 def update_framework_from_git(dry_run: bool) -> None:
@@ -881,7 +1249,7 @@ def update_framework_from_git(dry_run: bool) -> None:
 def install_or_repair(args: argparse.Namespace, state: dict[str, Any]) -> int:
     args.target = choose_target(args.target, args.yes)
     clients = target_clients(args.target)
-    if args.action == "update-repair":
+    if args.action == "update-repair" and not args.skip_framework_update:
         update_framework_from_git(args.dry_run)
     for client in clients:
         detected, detail = client_detected(client)
@@ -892,16 +1260,28 @@ def install_or_repair(args: argparse.Namespace, state: dict[str, Any]) -> int:
             if not ask(message + " Continue wiring anyway?", default=False):
                 raise RuntimeError("Cancelled")
     profiles: dict[str, str] = {}
+    active_profiles = load_active_profiles()
     for client in clients:
         explicit = args.codex_profile if client == "codex" else args.claude_profile
-        profiles[client] = choose_profile(client, explicit or args.profile, state, args.yes)
+        explicit = explicit or args.profile
+        if args.action == "update-repair" and not explicit:
+            # Repair preserves the currently active profile. Profile changes are
+            # deliberate and belong to the separate change-profile operation.
+            profiles[client] = active_profiles.get(client) or state.get("profiles", {}).get(client) or "medium"
+            print(f"  preserving {client} profile -> {profiles[client]}")
+        else:
+            profiles[client] = choose_profile(client, explicit, state, args.yes)
         if profiles[client] not in {"low", "medium", "high"}:
             raise RuntimeError(f"Invalid profile for {client}: {profiles[client]}")
-        set_profile(client, profiles[client], args.dry_run)
+        # Avoid rewriting (or previewing a rewrite of) an already-selected
+        # profile. Update / Repair should preserve the active profile rather
+        # than looking like it is changing it.
+        if active_profiles.get(client) != profiles[client]:
+            set_profile(client, profiles[client], args.dry_run)
         if not args.dry_run:
             state["profiles"][client] = profiles[client]
     config = load_json(CONFIG_PATH, {})
-    ai_mcp, ai_state = install_aiindex(config, args.dry_run, args.skip_aiindex)
+    ai_mcp, ai_state = install_aiindex(config, state, args.dry_run, args.skip_aiindex, allow_update=not args.no_aiindex_update)
     if ai_mcp is not None or args.dry_run:
         ensure_aiindex_cli_path(state, args.dry_run)
     if not args.dry_run:
@@ -917,12 +1297,44 @@ def install_or_repair(args: argparse.Namespace, state: dict[str, Any]) -> int:
     if not args.dry_run:
         record_bootstrap_prerequisites(state)
         state["frameworkCommit"] = git_commit(FRAMEWORK_ROOT)
+        state["frameworkVersion"] = local_versions().get("framework")
         save_json(STATE_PATH, state)
     print()
     if args.dry_run:
-        print(f"Dry run complete for: {', '.join(clients)}")
+        print("Preview complete. No changes were made.")
     else:
         print(f"{args.action.replace('-', ' ').title()} complete for: {', '.join(clients)}")
+    for client in clients:
+        print(f"  {client}: profile={profiles[client]}")
+    return 0
+
+
+def change_profile(args: argparse.Namespace, state: dict[str, Any]) -> int:
+    args.target = choose_target(args.target, args.yes)
+    clients = target_clients(args.target)
+    ai_mcp = FRAMEWORK_ROOT / "bin" / ("aiindex-mcp.exe" if os.name == "nt" else "aiindex-mcp")
+    if not ai_mcp.exists():
+        ai_mcp = None
+    profiles: dict[str, str] = {}
+    for client in clients:
+        explicit = args.codex_profile if client == "codex" else args.claude_profile
+        profiles[client] = choose_profile(client, explicit or args.profile, state, args.yes)
+        if profiles[client] not in {"low", "medium", "high"}:
+            raise RuntimeError(f"Invalid profile for {client}: {profiles[client]}")
+        set_profile(client, profiles[client], args.dry_run)
+        if client == "codex":
+            wire_codex(profiles[client], state, args.dry_run, ai_mcp, wire_shared=False)
+        else:
+            wire_claude(profiles[client], state, args.dry_run, ai_mcp, wire_shared=False)
+        if not args.dry_run:
+            state.setdefault("profiles", {})[client] = profiles[client]
+            if client not in state.setdefault("installedClients", []):
+                state["installedClients"].append(client)
+    if not args.dry_run:
+        state["frameworkVersion"] = local_versions().get("framework")
+        state["frameworkCommit"] = git_commit(FRAMEWORK_ROOT)
+        save_json(STATE_PATH, state)
+    print("Preview complete. No changes were made." if args.dry_run else "Profile change complete.")
     for client in clients:
         print(f"  {client}: profile={profiles[client]}")
     return 0
@@ -931,12 +1343,21 @@ def install_or_repair(args: argparse.Namespace, state: dict[str, Any]) -> int:
 def uninstall(args: argparse.Namespace, state: dict[str, Any]) -> int:
     args.target = choose_target(args.target, args.yes)
     clients = target_clients(args.target)
+    # Managed skill links are handled explicitly by remove_managed_skills().
+    # Keep their paths so the generic recorded-link cleanup below does not
+    # report/remove them a second time during dry-run previews.
+    managed_skill_paths = {
+        str(client_root(client) / "skills" / name)
+        for client in clients
+        for name in state.get("managedSkills", {}).get(client, [])
+    }
     for client in clients:
         uninstall_graphify_client(client, state, args.dry_run)
         if client == "codex":
             restore_codex(state, args.dry_run)
         else:
             restore_claude(state, args.dry_run)
+        remove_managed_skills(client, state, args.dry_run)
         generated = FRAMEWORK_ROOT / "generated" / client
         if generated.exists():
             remove_owned_path(generated, args.dry_run)
@@ -945,6 +1366,8 @@ def uninstall(args: argparse.Namespace, state: dict[str, Any]) -> int:
             state["profiles"].pop(client, None)
     # Remove recorded links that belong to removed clients and still resolve into this framework.
     for raw in list(state.get("links", [])):
+        if raw in managed_skill_paths:
+            continue
         path = Path(raw)
         parent_name = path.parent.parent.name.lower() if len(path.parents) > 1 else ""
         belongs = any((client == "codex" and ".codex" in str(path)) or (client == "claude" and ".claude" in str(path)) for client in clients)
@@ -964,7 +1387,7 @@ def uninstall(args: argparse.Namespace, state: dict[str, Any]) -> int:
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Company AI Framework installer lifecycle")
-    p.add_argument("action", choices=["install", "update-repair", "uninstall", "doctor"])
+    p.add_argument("action", choices=["install", "update-repair", "change-profile", "check-updates", "uninstall", "doctor"])
     p.add_argument("--target", choices=["codex", "claude", "both"])
     p.add_argument("--profile", choices=["low", "medium", "high"])
     p.add_argument("--codex-profile", choices=["low", "medium", "high"])
@@ -974,10 +1397,22 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--verbose", action="store_true")
     p.add_argument("--skip-aiindex", action="store_true")
     p.add_argument("--skip-graphify", action="store_true")
+    p.add_argument("--skip-framework-update", action="store_true", help="Repair without pulling a newer framework version")
+    p.add_argument("--no-aiindex-update", action="store_true", help="Repair AiIndex if broken but do not upgrade a healthy older version")
+    p.add_argument("--apply", choices=["framework", "aiindex", "both"], help="For check-updates: apply selected updates")
+    p.add_argument("--json-output", action="store_true", help="Emit machine-readable JSON where supported")
     return p
 
 
 def main() -> int:
+    # Keep parent-process status lines in order with output emitted by delegated
+    # commands such as scripts/ai.py, even when stdout is piped by PowerShell.
+    try:
+        sys.stdout.reconfigure(line_buffering=True, write_through=True)
+        sys.stderr.reconfigure(line_buffering=True, write_through=True)
+    except (AttributeError, ValueError):
+        pass
+
     args = parser().parse_args()
     if args.verbose:
         print(f"Framework root: {FRAMEWORK_ROOT}")
@@ -986,6 +1421,10 @@ def main() -> int:
     try:
         if args.action == "doctor":
             return doctor(state)
+        if args.action == "check-updates":
+            return check_updates(args, state)
+        if args.action == "change-profile":
+            return change_profile(args, state)
         if args.action in {"install", "update-repair"}:
             return install_or_repair(args, state)
         return uninstall(args, state)

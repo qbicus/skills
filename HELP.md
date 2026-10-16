@@ -209,27 +209,39 @@ search_code
 
 ## Installation / lifecycle
 
-Windows:
+Windows interactive console:
+
+```powershell
+& "$env:USERPROFILE\.ai\install.ps1"
+```
+
+Menu: Install, Update / Repair, Change profiles, Check for updates, Uninstall, Doctor, Preview changes, Exit. Use Up/Down, Space, Enter, and Esc.
+
+Windows non-interactive examples:
 
 ```powershell
 & "$env:USERPROFILE\.ai\install.ps1" doctor
-& "$env:USERPROFILE\.ai\install.ps1" install -Target codex -Profile low
-& "$env:USERPROFILE\.ai\install.ps1" update-repair -Target both
-& "$env:USERPROFILE\.ai\install.ps1" uninstall -Target claude
+& "$env:USERPROFILE\.ai\install.ps1" install -Target codex -Profile low -Yes
+& "$env:USERPROFILE\.ai\install.ps1" update-repair -Target both -Yes
+& "$env:USERPROFILE\.ai\install.ps1" change-profile -Target codex -Profile medium -Yes
+& "$env:USERPROFILE\.ai\install.ps1" check-updates
+& "$env:USERPROFILE\.ai\install.ps1" uninstall -Target claude -Yes
 ```
 
-Linux:
+Linux non-interactive examples:
 
 ```bash
 ~/.ai/install.sh doctor
-~/.ai/install.sh install --target codex --profile low
-~/.ai/install.sh update-repair --target both
-~/.ai/install.sh uninstall --target claude
+~/.ai/install.sh install --target codex --profile low --yes
+~/.ai/install.sh update-repair --target both --yes
+~/.ai/install.sh change-profile --target codex --profile medium --yes
+~/.ai/install.sh check-updates
+~/.ai/install.sh uninstall --target claude --yes
 ```
 
-Common options include `--yes`, `--dry-run`, `--verbose`, `--skip-aiindex`, and `--skip-graphify` (PowerShell equivalents use normal named switches). `Update / Repair` is the repair/reinstall-owned-state path; there is no separate reinstall operation.
+`Update / Repair` preserves the active profile by default. Use `Change profiles` for deliberate low/medium/high changes. AiIndex is not re-downloaded when the installed runtime is healthy and current. Existing Graphify tooling/integration is preserved.
 
-For pipe bootstrap before the canonical repository URL is embedded, set `AI_FRAMEWORK_REPO_URL`. See `README.md` and `INSTALLER.md`.
+Canonical repository: `https://github.com/qbicus/skills.git`. See `README.md` and `INSTALLER.md`.
 
 ## Python prerequisite policy
 

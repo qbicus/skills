@@ -1,28 +1,52 @@
 # Installer internals
 
-The public entry points are `install.ps1` and `install.sh` at the repository root.
-Both bootstrap Git + uv, locate/clone the framework, then invoke `installer/installer.py`.
+Public entry points:
 
-Installer-owned machine state is stored under:
+- `install.ps1`
+- `install.sh`
+
+Shared lifecycle implementation:
+
+```text
+installer/installer.py
+```
+
+Canonical repository:
+
+```text
+https://github.com/qbicus/skills.git
+```
+
+Installer state:
 
 ```text
 ~/.ai/local/installer-state.json
 ```
 
-Generated provider/native state remains under `~/.ai/generated/` and is disposable.
-Repository-local `.ai/providers/` overrides and `.ai-index*` project data are never owned by this installer.
+Generated provider/native state:
 
-## Repository URL
+```text
+~/.ai/generated/
+```
 
-For a pipe/bootstrap install, set either:
+Repository-local provider overrides and `.ai-index*` project data are never installer-owned.
 
-- `AI_FRAMEWORK_REPO_URL`, or
-- `frameworkRepositoryUrl` in `installer/config.json` before publishing the installer.
+## Version sources
 
-When running from an existing checkout, the installer can use that checkout directly.
+Framework metadata is stored in root `version.json`. The current public copy used for update checks is:
 
-## AiIndex private Gitea access
+```text
+https://raw.githubusercontent.com/qbicus/skills/main/version.json
+```
 
-The default latest-release API points at the known AiIndex Gitea repository. If the
-release API requires authentication, set `AIINDEX_GITEA_TOKEN` in the environment.
-The token is sent as an Authorization header and is never written to installer state/logs.
+AiIndex latest release metadata comes from:
+
+```text
+https://api.github.com/repos/qbicus/skills/releases/latest
+```
+
+A `GITHUB_TOKEN` may be supplied only to increase GitHub API rate limits; normal public installs do not require authentication.
+
+## Prerequisites
+
+Git, Python 3.11+, and `uv` are first-class prerequisites. Bootstrap may install them if absent, but uninstall never removes them.

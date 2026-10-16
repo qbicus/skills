@@ -83,31 +83,41 @@ Supported operations:
 ```text
 Install
 Update / Repair
+Change profiles
+Check for updates
 Uninstall
 Doctor / Status
+Preview changes (interactive Windows UI)
 ```
 
 Targets can be `codex`, `claude`, or `both`, and provider profiles can be `low`, `medium`, or `high`.
 
 ### Windows
 
-From an existing checkout/install:
+Run with no arguments for the interactive installer/maintenance console:
+
+```powershell
+& "$env:USERPROFILE\.ai\install.ps1"
+```
+
+The interactive menu provides Install, Update / Repair, Change profiles, Check for updates, Uninstall, Doctor, and Preview changes. Arrow keys navigate, Space toggles multi-select items, Enter continues, and Esc goes back where supported.
+
+Non-interactive commands remain available:
 
 ```powershell
 & "$env:USERPROFILE\.ai\install.ps1" doctor
-& "$env:USERPROFILE\.ai\install.ps1" install -Target codex -Profile low
-& "$env:USERPROFILE\.ai\install.ps1" update-repair -Target both
-& "$env:USERPROFILE\.ai\install.ps1" uninstall -Target claude
+& "$env:USERPROFILE\.ai\install.ps1" install -Target codex -Profile low -Yes
+& "$env:USERPROFILE\.ai\install.ps1" update-repair -Target both -Yes
+& "$env:USERPROFILE\.ai\install.ps1" change-profile -Target codex -Profile medium -Yes
+& "$env:USERPROFILE\.ai\install.ps1" check-updates
+& "$env:USERPROFILE\.ai\install.ps1" uninstall -Target claude -Yes
 ```
 
-Bootstrap from a raw Git-hosted script once the framework repository URL is configured/published:
+One-line bootstrap from the public framework repository:
 
 ```powershell
-$env:AI_FRAMEWORK_REPO_URL = "<framework-git-url>"
-irm <raw-install.ps1-url> | iex
+irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1 | iex
 ```
-
-For a non-default target/profile in a pipe bootstrap, invoke the downloaded script block with parameters or install once and use the local `~/.ai/install.ps1` lifecycle command.
 
 ### Linux
 
@@ -120,11 +130,10 @@ From an existing checkout/install:
 ~/.ai/install.sh uninstall --target claude
 ```
 
-Bootstrap from a raw Git-hosted script once the framework repository URL is configured/published:
+Bootstrap from the public framework repository:
 
 ```bash
-export AI_FRAMEWORK_REPO_URL="<framework-git-url>"
-curl -fsSL <raw-install.sh-url> | bash
+curl -fsSL https://raw.githubusercontent.com/qbicus/skills/main/install.sh | bash
 ```
 
 The bootstrap scripts ensure Git, a compatible Python runtime (3.11+), and `uv`, locate/clone the framework, then hand off to the shared Python installer. Existing compatible Python is preserved; a fresh Windows install selects the highest stable Python 3.x package available through `winget`, while Linux uses the distribution package manager.
@@ -133,21 +142,19 @@ The bootstrap scripts ensure Git, a compatible Python runtime (3.11+), and `uv`,
 
 The installer:
 
-- wires shared skills without replacing unrelated skills;
+- installs/adopts canonical shared skill links (`debug`, `new-feature`, `advisor`, etc.) without prefixes or replacement of unrelated skills;
 - persists low/medium/high profiles per provider;
 - renders machine-local native routing under `~/.ai/generated/<provider>/`;
 - merges only framework-owned Codex/Claude config keys/sections and preserves unrelated settings;
-- installs/updates Graphify using the official `graphifyy` package through `uv`;
-- installs AiIndex CLI/MCP from release assets when available and verifies SHA-256;
+- installs Graphify through the official `graphifyy` package when missing and preserves an existing Graphify tool/integration;
+- installs/repairs/updates AiIndex CLI/MCP from GitHub release assets, verifies SHA-256, and skips re-download when the current runtime is healthy;
 - registers AiIndex MCP for selected clients where supported;
 - records installer-owned state under `~/.ai/local/installer-state.json`;
 - never owns repo-local `.ai/providers/`, `.ai-index.json`, or `.ai-index/`.
 
-`Update / Repair` is intentionally both upgrade and repair: it regenerates missing/stale installer-owned wiring without requiring a destructive reinstall.
+`Update / Repair` preserves each client's active profile unless a profile change is explicitly requested. It repairs missing/stale installer-owned wiring and can include available Framework/AiIndex updates after confirmation in the interactive UI.
 
-### Bootstrap repository URL
-
-The public pipe-install command needs the canonical framework repository URL. Until that URL is hard-coded for release, set `AI_FRAMEWORK_REPO_URL` or pass the repository URL to the local bootstrap script. See [`installer/common/README.md`](installer/common/README.md).
+The canonical repository is `https://github.com/qbicus/skills.git`.
 
 ## Native agent integration
 
@@ -745,7 +752,6 @@ Do not run it for simple Q&A with no project changes.
 
 ## Remaining installation work
 
-Provider resolution, fallback diagnostics, repo overrides, and native Codex/Claude fragment generation are implemented. The main remaining framework lifecycle work is the installer: prerequisite handling, client detection, safe merge/update/uninstall, drift/backups, AiIndex/Graphify wiring, and end-to-end validation on real Codex/Claude installations. Until that is complete, this README intentionally keeps installation as a placeholder rather than presenting unfinished installer commands as supported behavior. See `INSTALLER.md` and `docs/REMAINING-WORK.md`.
+The Windows interactive installer and shared lifecycle core are implemented. Remaining work is primarily live validation/hardening of Windows Codex + Claude flows, then implementing the equivalent interactive Linux experience and validating Linux Codex. See `INSTALLER.md` and `docs/REMAINING-WORK.md`.
 
-
-Doctor and uninstall are intentionally non-mutating with respect to system prerequisites: they require an existing compatible Python runtime and never install Git, Python, or uv.
+Doctor and uninstall are intentionally non-mutating with respect to system prerequisites: they require an existing compatible Python runtime and never install Git, Python, or uv. Python, Git, and uv are never removed automatically during uninstall.
