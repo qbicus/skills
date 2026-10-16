@@ -1,6 +1,6 @@
 # Claude Code Setup
 
-> Windows installer lifecycle support is implemented and live-validated for Claude Code. The installer safely merges framework-owned Claude wiring while preserving unrelated settings and agents. Linux support is implemented but still pending the same live validation pass.
+> Windows x64 installer lifecycle support is implemented and live-validated for Claude Code. The installer safely merges framework-owned Claude wiring while preserving unrelated settings and agents. Linux Claude validation is still pending.
 
 ## Global folders
 

@@ -117,6 +117,77 @@ class InstallerCoreTests(unittest.TestCase):
             finally:
                 installer.FRAMEWORK_ROOT = old_root
 
+
+    def test_wire_skills_migrates_exact_legacy_copy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "framework"
+            skill = root / "skills" / "debug"
+            skill.mkdir(parents=True)
+            (skill / "SKILL.md").write_text("---\nname: debug\n---\n# debug\n", encoding="utf-8")
+            codex = Path(tmp) / "codex"
+            legacy = codex / "skills" / "debug"
+            legacy.mkdir(parents=True)
+            (legacy / "SKILL.md").write_text((skill / "SKILL.md").read_text(encoding="utf-8"), encoding="utf-8")
+            state = {"managedSkills": {"codex": [], "claude": []}, "links": []}
+            old_root = installer.FRAMEWORK_ROOT
+            try:
+                installer.FRAMEWORK_ROOT = root
+                with mock.patch.dict(os.environ, {"CODEX_HOME": str(codex)}):
+                    installer.wire_skills("codex", state, False)
+                self.assertTrue(legacy.is_symlink())
+                self.assertEqual(legacy.resolve(), skill.resolve())
+            finally:
+                installer.FRAMEWORK_ROOT = old_root
+
+    def test_wire_skills_refuses_modified_legacy_copy_with_clear_message(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "framework"
+            skill = root / "skills" / "debug"
+            skill.mkdir(parents=True)
+            (skill / "SKILL.md").write_text("---\nname: debug\n---\n# current\n", encoding="utf-8")
+            codex = Path(tmp) / "codex"
+            legacy = codex / "skills" / "debug"
+            legacy.mkdir(parents=True)
+            (legacy / "SKILL.md").write_text("---\nname: debug\n---\n# old or edited\n", encoding="utf-8")
+            state = {"managedSkills": {"codex": [], "claude": []}, "links": []}
+            old_root = installer.FRAMEWORK_ROOT
+            try:
+                installer.FRAMEWORK_ROOT = root
+                with mock.patch.dict(os.environ, {"CODEX_HOME": str(codex)}):
+                    with self.assertRaisesRegex(RuntimeError, "Legacy framework skill copy detected"):
+                        installer.wire_skills("codex", state, False)
+            finally:
+                installer.FRAMEWORK_ROOT = old_root
+
+    def test_codex_detection_accepts_chatgpt_command(self):
+        with mock.patch.object(installer, "which", side_effect=lambda name: "/usr/bin/chatgpt" if name == "chatgpt" else None), \
+             mock.patch.object(installer, "command_version", return_value="chatgpt 1.2.3"):
+            detected, detail = installer.client_detected("codex")
+        self.assertTrue(detected)
+        self.assertIn("chatgpt", detail)
+
+    def test_aiindex_dry_run_preserves_correct_linux_shim(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "framework"
+            bin_dir = root / "bin"
+            bin_dir.mkdir(parents=True)
+            cli = bin_dir / "aiindex"
+            cli.write_text("x", encoding="utf-8")
+            home = Path(tmp) / "home"
+            shim = home / ".local" / "bin" / "aiindex"
+            shim.parent.mkdir(parents=True)
+            shim.symlink_to(cli)
+            old_root = installer.FRAMEWORK_ROOT
+            try:
+                installer.FRAMEWORK_ROOT = root
+                with mock.patch.object(Path, "home", return_value=home), \
+                     mock.patch("builtins.print") as print_mock:
+                    installer.ensure_aiindex_cli_path({}, True)
+                output = "\n".join(" ".join(str(a) for a in call.args) for call in print_mock.call_args_list)
+                self.assertIn("would preserve existing AiIndex link", output)
+            finally:
+                installer.FRAMEWORK_ROOT = old_root
+
     def test_aiindex_current_version_skips_download(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

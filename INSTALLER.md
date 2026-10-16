@@ -1,6 +1,6 @@
 # AI Framework Installer — Implementation Checklist
 
-Status: **Windows x64 lifecycle live-validated for Codex and Claude — Linux live validation next**
+Status: **Windows x64 live-validated for Codex and Claude; Linux x64 live-validated for Codex**
 
 The installer owns the global AI framework installation lifecycle for Codex and Claude while preserving unrelated user configuration, skills, MCP registrations, repository overrides, and project indexes.
 
@@ -11,9 +11,9 @@ Implemented:
 
 - shared Python lifecycle core (`installer/installer.py`);
 - Windows bootstrap + interactive maintenance console (`install.ps1`);
-- Linux bootstrap/non-interactive lifecycle (`install.sh`);
+- Linux interactive bootstrap + non-interactive lifecycle (`install.sh`);
 - Install / Update / Repair / Change profiles / Check for updates / Uninstall / Doctor;
-- Windows keyboard UI with Up/Down, Space multi-select, Enter and Esc;
+- Windows and Linux keyboard UI with Up/Down, Space multi-select, Enter and Esc;
 - framework/AiIndex version display from `version.json` + installer state;
 - canonical repository `https://github.com/qbicus/skills.git`;
 - canonical skill names with explicit per-client ownership tracking;
@@ -33,6 +33,16 @@ Validated on Windows x64:
 - Codex install, Update / Repair, profile changes, update checks, preview, uninstall/reinstall;
 - Claude install, Update / Repair, profile changes, native agent/settings sync, Graphify preservation, and idempotent AiIndex MCP registration;
 - safe skill-link adoption/repair and real-directory/junction uninstall handling;
+
+Validated on Linux x64 (Codex):
+
+- public `curl | bash` fresh bootstrap with interactive menu;
+- Codex install with `low` profile;
+- AiIndex install/link and current-version skip;
+- Graphify install/preservation;
+- 18/18 canonical skill wiring;
+- Doctor, Update / Repair, profile changes, update checks, preview, uninstall, Doctor-after-uninstall, and reinstall;
+- safe refusal for modified legacy copied skills, with exact legacy copies eligible for migration to managed links.
 - AiIndex current-version skip and Graphify preservation.
 
 Still to do / validate:

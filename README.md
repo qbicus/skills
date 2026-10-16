@@ -16,7 +16,7 @@ or:
 
 It is the source of truth for company rules, reusable skills, provider/model-routing policy, prompt starters, project templates, repository-intelligence guidance, scripts, and hooks.
 
-> **Installation status:** Windows x64 has been live-validated for Codex and Claude Code. Linux support is implemented but still needs live validation before it should be treated as production-ready.
+> **Installation status:** Windows x64 is live-validated for Codex and Claude Code. Linux x64 is live-validated for Codex, including fresh bootstrap, install, Doctor, Update / Repair, profile changes, update checks, preview, uninstall, and reinstall. Linux Claude and Linux ARM64 validation are still pending.
 
 ## Quick help
 
@@ -151,7 +151,7 @@ Non-interactive commands remain available:
 
 ### Linux
 
-> Linux lifecycle support is implemented but has not yet completed the same live validation pass as Windows.
+> Linux x64 Codex lifecycle support has been live-validated. Linux Claude and Linux ARM64 validation are still pending.
 
 From an existing checkout/install:
 
@@ -824,13 +824,13 @@ Do not run it for simple Q&A with no project changes.
 
 ## Validation status and remaining work
 
-Windows x64 has completed the live installer lifecycle pass for Codex and Claude Code, including install, Doctor, Update / Repair, profile changes, update checks, preview behavior, and Codex uninstall/reinstall coverage. The current Windows installer is the primary supported colleague path.
+Windows x64 has completed the live installer lifecycle pass for Codex and Claude Code. Linux x64 Codex has also completed fresh bootstrap, install, Doctor, Update / Repair, profile changes, update checks, preview behavior, uninstall, and reinstall. Windows remains the primary supported colleague path.
 
 Still to complete before calling the whole cross-platform installer production-ready:
 
-- live Linux x64 lifecycle validation (Codex first, then Claude where available);
+- live Linux x64 Claude validation where available;
 - Linux ARM64 validation where hardware/CI is available;
-- final Linux-specific interactive polish and troubleshooting checks;
+- final Linux troubleshooting/documentation checks;
 - optional future macOS validation if/when that platform is actively supported by the team.
 
 See [`docs/REMAINING-WORK.md`](docs/REMAINING-WORK.md) for engineering validation notes.

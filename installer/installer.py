@@ -301,12 +301,42 @@ def is_directory_link(path: Path) -> bool:
     return False
 
 
+def _skill_tree_files(root: Path) -> dict[str, bytes]:
+    """Return meaningful skill files for safe legacy-copy comparison.
+
+    Python caches are ignored because old manually copied skills commonly contain
+    them and they are generated artifacts rather than skill source.
+    """
+    files: dict[str, bytes] = {}
+    if not root.is_dir():
+        return files
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(root)
+        if "__pycache__" in rel.parts or path.suffix == ".pyc":
+            continue
+        files[rel.as_posix()] = path.read_bytes()
+    return files
+
+
+def _skill_frontmatter_name(skill_md: Path) -> str | None:
+    if not skill_md.is_file():
+        return None
+    try:
+        text = skill_md.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+    match = re.search(r"(?m)^name:\s*[\"']?([^\"'\n]+)[\"']?\s*$", text)
+    return match.group(1).strip() if match else None
+
+
 def create_dir_link(link: Path, target: Path, dry_run: bool) -> str:
     """Create/adopt/repair a client skill directory link.
 
-    Correct existing links are adopted. Wrong-target symlinks/junctions are
-    repaired. Real directories are never replaced because they may be owned by
-    the user or another tool.
+    Correct existing links are adopted and wrong-target links are repaired. An
+    exact legacy *copied* framework skill may be migrated to a managed link. A
+    modified or unrelated real directory is never overwritten automatically.
     """
     if link.exists() or link.is_symlink():
         try:
@@ -322,9 +352,30 @@ def create_dir_link(link: Path, target: Path, dry_run: bool) -> str:
                     link.unlink()
                 else:
                     os.rmdir(link)
+        elif link.is_dir():
+            # Older framework installs copied skills into the client directory
+            # instead of linking them. Migrate only when the meaningful file tree
+            # exactly matches the current canonical skill, so user edits are never
+            # discarded.
+            if _skill_tree_files(link) == _skill_tree_files(target):
+                print(f"  {'would migrate' if dry_run else 'migrating'} legacy copied framework skill {link} -> managed link")
+                if not dry_run:
+                    shutil.rmtree(link)
+            else:
+                source_name = _skill_frontmatter_name(link / "SKILL.md")
+                target_name = _skill_frontmatter_name(target / "SKILL.md")
+                if source_name and target_name and source_name == target_name == target.name:
+                    raise RuntimeError(
+                        f"Legacy framework skill copy detected at {link}, but its contents differ from the current canonical skill. "
+                        "The installer will not overwrite possible local edits. Move/rename or remove that directory, then rerun Update / Repair."
+                    )
+                raise RuntimeError(
+                    f"Refusing to replace unrelated existing skill directory: {link}. "
+                    "Move/rename it and rerun Update / Repair."
+                )
         else:
             raise RuntimeError(
-                f"Refusing to replace unrelated existing skill directory: {link}. "
+                f"Refusing to replace unrelated existing skill path: {link}. "
                 "Move/rename it and rerun Update / Repair."
             )
     print(f"  {'would link' if dry_run else 'linked'} {link} -> {target}")
@@ -940,21 +991,23 @@ def ensure_aiindex_cli_path(state: dict[str, Any], dry_run: bool) -> None:
     else:
         shim_dir = Path.home() / ".local" / "bin"
         shim = shim_dir / "aiindex"
+        if shim.exists() or shim.is_symlink():
+            try:
+                if shim.resolve() == cli.resolve():
+                    print(f"  {'would preserve' if dry_run else 'preserving'} existing AiIndex link {shim} -> {cli}")
+                    return
+                print(f"  WARNING: preserving unrelated existing shim: {shim}")
+                return
+            except OSError:
+                print(f"  WARNING: preserving unreadable existing shim: {shim}")
+                return
         if dry_run:
             print(f"  would link {shim} -> {cli}")
             return
         shim_dir.mkdir(parents=True, exist_ok=True)
-        if shim.exists() or shim.is_symlink():
-            try:
-                if shim.resolve() != cli.resolve():
-                    print(f"  WARNING: preserving unrelated existing shim: {shim}")
-                    return
-            except OSError:
-                return
-        else:
-            shim.symlink_to(cli)
-            state.setdefault("links", []).append(str(shim))
-            print(f"  linked {shim} -> {cli}")
+        shim.symlink_to(cli)
+        state.setdefault("links", []).append(str(shim))
+        print(f"  linked {shim} -> {cli}")
 
 
 def graphify_executable() -> str | None:
@@ -1075,10 +1128,20 @@ def uninstall_graphify_client(client: str, state: dict[str, Any], dry_run: bool)
 
 
 def client_detected(client: str) -> tuple[bool, str]:
-    exe = which(client)
+    commands = [client]
+    # The Linux ChatGPT/Codex desktop package currently exposes `chatgpt` rather
+    # than `codex`. Accept either command while keeping `codex` preferred when
+    # both are available.
+    if client == "codex":
+        commands.append("chatgpt")
+    for command in commands:
+        exe = which(command)
+        if exe:
+            version = command_version(command) or "installed"
+            if command != client:
+                return True, f"{version} ({command})"
+            return True, version
     home = client_root(client)
-    if exe:
-        return True, command_version(client) or "installed"
     if home.exists():
         return True, "home/config present; CLI not on PATH"
     return False, "not detected"
@@ -1109,13 +1172,20 @@ def doctor(state: dict[str, Any]) -> int:
         source = "saved profile" if client in active_profiles else ("installer state" if state.get("profiles", {}).get(client) else "default")
         rows.append((f"{client} profile", f"{profile} ({'OK' if ok else 'INVALID'}; {source})"))
         generated = FRAMEWORK_ROOT / "generated" / client
-        rows.append((f"{client} wiring", "OK" if generated.exists() else "missing/generated not rendered"))
-        healthy, total, skill_issues = skill_health(client, state)
-        if total:
-            detail_skills = f"{healthy}/{total} OK"
-            if skill_issues:
-                detail_skills += f" ({len(skill_issues)} issue{'s' if len(skill_issues) != 1 else ''})"
-            rows.append((f"{client} skills", detail_skills))
+        if not detected:
+            rows.append((f"{client} wiring", "not applicable (client not detected)"))
+            rows.append((f"{client} skills", "not applicable (client not detected)"))
+        else:
+            rows.append((f"{client} wiring", "OK" if generated.exists() else "missing/generated not rendered"))
+            healthy, total, skill_issues = skill_health(client, state)
+            if total:
+                if healthy == total and not skill_issues:
+                    detail_skills = f"{healthy}/{total} OK"
+                else:
+                    detail_skills = f"{healthy}/{total} healthy"
+                    if skill_issues:
+                        detail_skills += f" ({len(skill_issues)} issue{'s' if len(skill_issues) != 1 else ''})"
+                rows.append((f"{client} skills", detail_skills))
     ai_bin = FRAMEWORK_ROOT / "bin" / ("aiindex.exe" if os.name == "nt" else "aiindex")
     ai_mcp = FRAMEWORK_ROOT / "bin" / ("aiindex-mcp.exe" if os.name == "nt" else "aiindex-mcp")
     installed_ai = installed_aiindex_version(state, ai_bin, ai_mcp)

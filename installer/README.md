@@ -1,11 +1,11 @@
 # AI Framework Installer
 
-**Status:** Windows x64 is live-validated for Codex and Claude Code. Linux lifecycle support is implemented but still pending the same live validation pass.
+**Status:** Windows x64 is live-validated for Codex and Claude Code. Linux x64 is live-validated for Codex; Linux Claude and Linux ARM64 validation remain pending.
 
 Public bootstrap entry points:
 
 - `install.ps1` — Windows interactive + non-interactive installer
-- `install.sh` — Linux shell bootstrap / non-interactive lifecycle entry point
+- `install.sh` — Linux interactive bootstrap + non-interactive lifecycle entry point
 
 Both use the shared `installer/installer.py` lifecycle core. The framework requires Git, Python 3.11+, and `uv`; bootstrap installs missing prerequisites where supported. Python, Git, and `uv` are never removed by framework uninstall.
 
@@ -59,7 +59,7 @@ Windows:
 .\install.ps1 doctor
 ```
 
-Linux (implemented; live validation still pending):
+Linux (x64 Codex live-validated):
 
 ```bash
 ./install.sh install --target codex --profile low --yes

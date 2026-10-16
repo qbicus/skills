@@ -1,9 +1,9 @@
 # AI Framework — Remaining Work
 
-Status: **Codex runtime/E2E verified; Windows x64 installer lifecycle live-validated for Codex and Claude; Claude behavioral E2E expansion deferred; Linux live validation/interactive polish pending**
+Status: **Codex runtime/E2E verified; Windows x64 installer live-validated for Codex and Claude; Linux x64 installer live-validated for Codex; Claude behavioral E2E expansion deferred**
 
 
-> 2026-10-16 update: provider routing, native Codex/Claude agent generation, strict runtime fallback orchestration, substantial-work advisor checkpoints, bounded workers, and plan-controlled parallel execution are implemented. Live Codex validation covers native role invocation, model fallback, substantial `new-feature`, researcher/executor delegation, advisor plan/completion checkpoints, explicit parallel execution, and repeated-failure advisor behavior. Windows x64 installer lifecycle is live-validated for Codex and Claude. Claude behavioral E2E expansion remains intentionally deferred; Linux lifecycle validation and interactive polish are next. Installation/update lifecycle remains owned by `INSTALLER.md`.
+> 2026-10-16 update: provider routing, native Codex/Claude agent generation, strict runtime fallback orchestration, substantial-work advisor checkpoints, bounded workers, and plan-controlled parallel execution are implemented. Live Codex validation covers native role invocation, model fallback, substantial `new-feature`, researcher/executor delegation, advisor plan/completion checkpoints, explicit parallel execution, and repeated-failure advisor behavior. Windows x64 installer lifecycle is live-validated for Codex and Claude, and Linux x64 installer lifecycle is live-validated for Codex. Claude behavioral E2E expansion remains intentionally deferred; Linux Claude and Linux ARM64 validation remain. Installation/update lifecycle remains owned by `INSTALLER.md`.
 
 This checklist tracks the remaining work after the provider-neutral role model, advisor skill, substantial-work marker, bounded workers, plan-controlled parallel execution, provider config files, README/help updates, and initial skill standardization were added.
 

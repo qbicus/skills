@@ -1,6 +1,6 @@
 # Codex Setup
 
-> Windows installer lifecycle support is implemented and live-validated for Codex. The installer safely merges framework-owned Codex wiring while preserving unrelated user configuration. Linux support is implemented but still pending the same live validation pass.
+> Windows x64 and Linux x64 installer lifecycle support are live-validated for Codex. The installer safely merges framework-owned Codex wiring while preserving unrelated user configuration. Linux ARM64 validation remains pending.
 
 ## Global folders
 
