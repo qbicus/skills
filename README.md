@@ -51,6 +51,8 @@ Inspect first, show me the planned changes, then proceed.
 
 `repo-init` preserves existing project configuration, asks before broad full/rebuild indexing, and reports exactly what it changed.
 
+If you are **taking over an existing project** rather than merely initializing it, use `project-takeover` instead. It invokes `repo-init`, then uses AiIndex/Graphify and targeted reads to build project understanding without exhaustively loading the repository into the primary model context.
+
 ## Core idea
 
 Skills are shared between Codex and Claude and **do not hard-code model names**.
@@ -110,7 +112,7 @@ Change profiles
 Check for updates
 Uninstall
 Doctor / Status
-Preview changes (interactive Windows/Linux UI)
+Preview changes (interactive Windows UI)
 ```
 
 Targets can be `codex`, `claude`, or `both`, and provider profiles can be `low`, `medium`, or `high`.
@@ -599,6 +601,26 @@ Example:
 Use session-close for the current feature before we stop today.
 ```
 
+### `project-takeover`
+
+Take over an inherited/existing project efficiently. It performs a lightweight preflight, invokes `repo-init`, then uses AiIndex for semantic discovery, Graphify for structural verification, bounded delegated workers, and targeted source reads to build a verified project understanding without recursively loading the repository into the primary model context.
+
+Typical prompt:
+
+```text
+Use project-takeover on this repository.
+
+It was previously developed by another developer or AI assistant. Initialize or
+repair our AI framework setup if necessary, then build a verified understanding
+of the project using AiIndex and Graphify.
+
+Do not exhaustively read the repository into the primary context.
+
+At the end, give me your understanding of the architecture, current state,
+important decisions/risks, and any questions you need answered before we
+continue development.
+```
+
 ### `repo-init`
 
 Initialize a new or existing repository for this framework without overwriting unrelated project configuration. It inspects the repository first, proposes the intended changes, scaffolds missing project AI files, configures repository intelligence (AiIndex and Graphify) as appropriate, updates generated-data ignore rules, and verifies the resulting setup.
@@ -645,7 +667,11 @@ The helper can always be invoked through Python. Do not assume a separate global
 
 ## Initialize an existing repository
 
-After the framework is installed globally, open the repository in Codex or Claude and ask the agent to use `repo-init`. This is the recommended first-run workflow for an existing codebase because the skill can inspect the repository before changing anything.
+After the framework is installed globally, open the repository in Codex or Claude and ask the agent to use `repo-init` when the goal is framework/repository-intelligence setup only.
+
+When inheriting an existing codebase and needing to understand it before continuing development, prefer `project-takeover`; it calls `repo-init` and then performs indexed/targeted takeover analysis.
+
+For setup-only initialization, ask the agent to use `repo-init`. This is the recommended first-run workflow for an existing codebase because the skill can inspect the repository before changing anything.
 
 Recommended prompt:
 

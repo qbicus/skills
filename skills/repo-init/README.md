@@ -4,6 +4,8 @@ Initialize a new or existing repository for the shared Codex/Claude AI framework
 
 Use this once when onboarding an existing codebase, and again later when the framework project scaffold needs repair/update.
 
+`repo-init` prepares the repository. It intentionally does **not** perform broad project understanding. For inheriting an existing project and building a durable mental model, use `project-takeover`, which calls `repo-init` first.
+
 ## Recommended prompt
 
 ```text
@@ -15,15 +17,17 @@ Inspect first, show me the planned changes, then proceed.
 
 ## What it covers
 
-- inspect the repository before changing it;
+- inspect repository setup before changing it, without recursively reading the whole codebase;
 - preserve existing `AGENTS.md`, `CLAUDE.md`, `.ai/` project knowledge, provider overrides, source files, and Git history;
 - create only missing framework project scaffold files;
 - create or preserve `.ai-index.json` and set up AiIndex repository intelligence;
 - detect/use Graphify and avoid unnecessary graph rebuilds;
 - add missing generated-data ignore entries such as `.ai-index/` and `graphify-out/`;
 - keep `.ai-index.json` and useful repo-local `.ai/` project knowledge commit-friendly by default;
-- ask before broad/expensive full or rebuild indexing on an existing repository;
-- verify the resulting AiIndex/Graphify setup and report exactly what changed.
+- ask before broad/expensive full or rebuild indexing on an existing repository unless that exact operation has already been explicitly approved;
+- delegate bounded mechanical setup/inventory work where useful;
+- verify the resulting AiIndex/Graphify setup and report exactly what changed;
+- when invoked by `project-takeover` or another parent workflow, return a compact setup handoff instead of continuing into project analysis.
 
 ## Scaffold-only helper
 

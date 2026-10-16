@@ -1,6 +1,6 @@
 # Global AI Agent Instructions
 
-These are global instructions for AI coding agents working on team projects.
+These are global instructions for AI coding agents working on company projects.
 
 ## Always apply
 
@@ -68,6 +68,7 @@ Common mappings:
 - Modernization planning: `skills/modernize-plan`
 - Parallel execution: `skills/parallel-exec`
 - Architecture/TAS workflows: `skills/tas-*`
+- Project takeover / inherited-project understanding: `skills/project-takeover`
 - Repository initialization/onboarding: `skills/repo-init`
 - Independent checkpoint review: `skills/advisor`
 
@@ -159,6 +160,18 @@ Do not run it for simple Q&A with no project changes.
 ## Repository intelligence
 
 Use installed repository-intelligence tools instead of invoking their source projects directly.
+
+### Repository discovery and takeover
+
+For broad requests such as "understand this project", "take over this repository", or "learn the codebase":
+
+- prefer `project-takeover` when the user is inheriting an existing project;
+- do not recursively read every repository file into the primary context;
+- establish/repair repository intelligence through `repo-init` when needed;
+- use AiIndex for semantic discovery and Graphify for structural verification;
+- read source/config/test files selectively to answer concrete questions or verify conclusions;
+- keep expensive primary-model work focused on synthesis, conflicts, decisions, and final ownership;
+- persist concise verified project knowledge under `.ai/` so future sessions can resume without another full takeover pass.
 
 ### AiIndex
 

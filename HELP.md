@@ -76,12 +76,26 @@ python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --set-prof
 | `modernize-eval` | Modernization assessment | `Use modernize-eval on this system.` |
 | `modernize-plan` | Approved modernization plan | `Use modernize-plan from the evaluation.` |
 | `session-close` | End-of-session handoff | `Use session-close before we stop.` |
+| `project-takeover` | Inherit/understand an existing project efficiently | `Use project-takeover on this repository.` |
+| `repo-init` | Framework/repository-intelligence setup | `Use repo-init to initialize this repository.` |
 | `tas-01-*` | Per-repo architecture analysis | See architecture skills README |
 | `tas-02-*` | Group projects/platforms | See architecture skills README |
 | `tas-03-*` | Normalize architecture entities | See architecture skills README |
 | `tas-04-*` | Generate TAS documents | See architecture skills README |
 
 Claude Code exposes installed skills through `/name` commands. Natural-language `Use the <name> skill...` is portable across clients.
+
+### `project-takeover`
+
+Use when inheriting an existing project and needing to understand it before continuing development. It invokes `repo-init`, then uses AiIndex, Graphify, bounded delegated work, and targeted reads rather than recursively loading every file into the primary context.
+
+Recommended prompt:
+
+```text
+Use project-takeover on this repository.
+```
+
+The full workflow produces a verified architecture/current-state/risk summary, updates useful `.ai/` project knowledge, and ends with unresolved questions.
 
 ### `repo-init`
 

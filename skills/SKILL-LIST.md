@@ -1,6 +1,6 @@
 # Skill List
 
-18 canonical framework skills are installed for supported clients.
+19 canonical framework skills are installed for supported clients.
 
 - `nf-spec` (used by `new-feature`)
 - `nf-design` (used by `new-feature`)
@@ -16,6 +16,7 @@
 - `code-review` (standalone)
 - `debug` (standalone)
 - `repo-init` (standalone; initializes/onboards repositories for framework use)
+- `project-takeover` (standalone; invokes `repo-init`, then builds a targeted indexed understanding of an inherited project)
 - `tas-01-project-architecture-analyzer` (standalone)
 - `tas-02-architecture-project-grouper` (standalone)
 - `tas-03-architecture-normalizer` (standalone)
@@ -81,7 +82,11 @@ Reads production or build logs first, identifies the real failure pattern, narro
 
 ### `repo-init`
 Standalone repository onboarding and repair workflow.
-Inspects first, preserves existing project configuration, scaffolds missing framework files, configures AiIndex and Graphify repository intelligence as appropriate, maintains generated-data ignore rules, and verifies the resulting setup.
+Inspects first, preserves existing project configuration, scaffolds missing framework files, configures AiIndex and Graphify repository intelligence as appropriate, maintains generated-data ignore rules, and verifies the resulting setup. When invoked by a parent workflow it returns a compact setup handoff and does not expand into general repository understanding.
+
+### `project-takeover`
+Standalone inherited-project onboarding workflow.
+Performs a lightweight preflight, invokes `repo-init`, then uses AiIndex for semantic discovery, Graphify for structural verification, bounded delegated work, and targeted source reads to build a durable project understanding without exhaustively ingesting the repository into the primary context.
 
 ### `tas-01-project-architecture-analyzer`
 Standalone repository architecture profiling workflow.

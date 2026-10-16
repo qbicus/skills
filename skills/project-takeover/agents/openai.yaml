@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Takeover"
+  short_description: "Take over an existing repo using indexed, targeted discovery."
+  default_prompt: "Use $project-takeover to initialize repository intelligence if needed, then build a verified project understanding without exhaustively reading every file."
