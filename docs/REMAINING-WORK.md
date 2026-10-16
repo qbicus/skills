@@ -259,7 +259,7 @@ ai.py help
 
 ### Claude
 
-> Deferred by choice for now to avoid consuming company Claude limits. Claude provider config/native subagent rendering remains implemented and statically validated. Reuse the same Codex acceptance matrix when live Claude validation is scheduled.
+> Deferred by choice for now to avoid consuming team Claude limits. Claude provider config/native subagent rendering remains implemented and statically validated. Reuse the same Codex acceptance matrix when live Claude validation is scheduled.
 
 - [ ] Repeat the same scenarios under Claude Code.
 - [ ] Verify Claude-specific subagents/advisor integration.
@@ -276,11 +276,11 @@ ai.py help
 
 ## 17. Distribution / release integration *(installer-owned)*
 
-- [ ] Ensure provider configs are included in the distributed framework.
-- [ ] Ensure the advisor skill is included in the distributed skill set.
-- [ ] Ensure HELP/README ship with the framework.
+- [x] Ensure provider configs are included in the distributed framework.
+- [x] Ensure the advisor skill is included in the distributed skill set.
+- [x] Ensure HELP/README ship with the framework.
 - [x] Ensure installers place/update provider files correctly.
-- [ ] Ensure Update / Repair preserves repo overrides and unrelated user content.
+- [x] Ensure Update / Repair preserves repo overrides and unrelated user content.
 - [x] Implement uninstall ownership tracking so only installer-managed resources are removed; live validation remains.
 
 See `INSTALLER.md` for the installer-specific checklist.
@@ -300,9 +300,9 @@ See `INSTALLER.md` for the installer-specific checklist.
 - [x] Codex substantial `new-feature`, executor, researcher, fallback, and parallel paths have live E2E evidence.
 - [x] Codex non-substantial flow confirms unnecessary advisor checkpoints are skipped.
 - [x] Codex repeated implementation failure triggers `advisor:stuck` at threshold `2`.
-- [ ] Codex repo-local provider override is verified live.
-- [ ] Manual advisor invocation is verified live.
-- [ ] README/HELP are refreshed with final verified examples.
+- [x] Codex repo-local provider override is verified live.
+- [x] Manual advisor invocation is verified live.
+- [x] README/HELP are refreshed with final verified examples.
 
 ### Deferred / release-level acceptance
 

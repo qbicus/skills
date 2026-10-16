@@ -6,22 +6,22 @@
 
 ```text
 %USERPROFILE%\.codex   # Codex runtime/config
-%USERPROFILE%\.ai      # shared company AI framework
+%USERPROFILE%\.ai      # shared team AI framework
 ```
 
 ## Global instructions
 
-Codex should receive the company framework instructions from:
+Codex should receive the team framework instructions from:
 
 ```text
 %USERPROFILE%\.ai\AGENTS.md
 ```
 
-Keep the shared framework as the source of truth rather than maintaining a divergent copy of company rules.
+Keep the shared framework as the source of truth rather than maintaining a divergent copy of team rules.
 
 ## Skills
 
-Expose company-owned skills from:
+Expose team-owned skills from:
 
 ```text
 %USERPROFILE%\.ai\skills

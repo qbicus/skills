@@ -47,9 +47,7 @@ Validated on Linux x64 (Codex):
 
 Still to do / validate:
 
-- live-test Linux Codex lifecycle;
 - live-test Linux Claude when a test installation is available;
-- finish Linux interactive polish;
 - validate Linux ARM64 where hardware/CI is available;
 - optional shared-component purge UX can be refined later;
 - deeper drift/hash/model-availability diagnostics can be added after lifecycle validation.
@@ -64,7 +62,7 @@ Implemented top-level operations:
 - [x] **Check for updates**
 - [x] **Uninstall**
 - [x] **Doctor / Status**
-- [x] **Preview changes** in the Windows interactive UI
+- [x] **Preview changes** in the Windows/Linux interactive UI
 
 `Update / Repair` is intentionally one operation: it upgrades installer-owned framework/runtime files when newer content exists and also reapplies/repairs missing, stale, or corrupted installer-owned wiring without disturbing unrelated user content.
 
@@ -91,7 +89,7 @@ Useful common options:
 
 - [x] Windows x64
 - [ ] Windows ARM64
-- [ ] Linux x64
+- [x] Linux x64
 - [ ] Linux ARM64
 - [ ] macOS x64
 - [ ] macOS ARM64

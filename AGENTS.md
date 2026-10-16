@@ -1,6 +1,6 @@
 # Global AI Agent Instructions
 
-These are global instructions for AI coding agents working on company projects.
+These are global instructions for AI coding agents working on team projects.
 
 ## Always apply
 

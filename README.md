@@ -1,4 +1,4 @@
-# Company AI Framework
+# Team AI Framework
 
 Shared AI-engineering framework for **Codex** and **Claude Code**.
 
@@ -14,7 +14,7 @@ or:
 ~/.ai
 ```
 
-It is the source of truth for company rules, reusable skills, provider/model-routing policy, prompt starters, project templates, repository-intelligence guidance, scripts, and hooks.
+It is the source of truth for team rules, reusable skills, provider/model-routing policy, prompt starters, project templates, repository-intelligence guidance, scripts, and hooks.
 
 > **Installation status:** Windows x64 is live-validated for Codex and Claude Code. Linux x64 is live-validated for Codex, including fresh bootstrap, install, Doctor, Update / Repair, profile changes, update checks, preview, uninstall, and reinstall. Linux Claude and Linux ARM64 validation are still pending.
 
@@ -110,7 +110,7 @@ Change profiles
 Check for updates
 Uninstall
 Doctor / Status
-Preview changes (interactive Windows UI)
+Preview changes (interactive Windows/Linux UI)
 ```
 
 Targets can be `codex`, `claude`, or `both`, and provider profiles can be `low`, `medium`, or `high`.
@@ -190,11 +190,11 @@ The canonical repository is `https://github.com/qbicus/skills.git`.
 
 ## Native agent integration
 
-The framework under `.ai` is the source of truth. Agent-native directories should point back to it rather than maintain independent copies of company-owned skills.
+The framework under `.ai` is the source of truth. Agent-native directories should point back to it rather than maintain independent copies of team-owned skills.
 
 ### Codex
 
-Expose company skills through Codex's native skill location using links/junctions where supported. Keep Codex-owned and third-party content under Codex's own management.
+Expose team skills through Codex's native skill location using links/junctions where supported. Keep Codex-owned and third-party content under Codex's own management.
 
 Global framework instructions are in:
 
@@ -221,7 +221,7 @@ The framework resolves effective Codex routing and renders native Codex custom-a
 
 ### Claude Code
 
-Expose company skills through Claude's native skill directory, normally:
+Expose team skills through Claude's native skill directory, normally:
 
 ```text
 ~/.claude/skills/

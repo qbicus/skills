@@ -6,7 +6,7 @@
 
 ```text
 %USERPROFILE%\.claude  # Claude Code runtime/config
-%USERPROFILE%\.ai      # shared company AI framework
+%USERPROFILE%\.ai      # shared team AI framework
 ```
 
 ## Shared instructions and skills
@@ -17,7 +17,7 @@
 ~/.ai/CLAUDE.md
 ```
 
-Company-owned skills should remain sourced from:
+team-owned skills should remain sourced from:
 
 ```text
 ~/.ai/skills/
