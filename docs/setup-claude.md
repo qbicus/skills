@@ -1,6 +1,6 @@
 # Claude Code Setup
 
-> Automated installation/update/uninstall is still pending. The runtime adapter and native Claude fragments are implemented; the installer will merge them safely into Claude Code without replacing unrelated settings or agents.
+> Windows installer lifecycle support is implemented and live-validated for Claude Code. The installer safely merges framework-owned Claude wiring while preserving unrelated settings and agents. Linux support is implemented but still pending the same live validation pass.
 
 ## Global folders
 
@@ -35,7 +35,7 @@ Global Claude routing profiles:
 ~/.ai/providers/claude.high.yml
 ```
 
-Select `low`, `medium`, or `high` with `--profile` or `AI_PROFILE`; `medium` is the default/recommended profile.
+Select `low`, `medium`, or `high` with `--profile` or `AI_PROFILE`; `medium` is the default/recommended delegated-role profile. The active primary Claude model remains the model selected for the current Claude session; framework profiles do not override that host/session choice.
 
 Optional repository overrides:
 
@@ -102,7 +102,7 @@ agents/ai-advisor.md
 agents/ai-fast.md
 ```
 
-The installer will eventually merge `settings.fragment.json` into `~/.claude/settings.json` and sync the generated agents under `~/.claude/agents/`, while preserving unrelated settings/agents.
+The installer merges the framework-owned settings from `settings.fragment.json` into `~/.claude/settings.json` and syncs generated framework agents under `~/.claude/agents/`, while preserving unrelated settings/agents. It also preserves an already-correct AiIndex MCP registration instead of rewriting Claude runtime state on every repair.
 
 ## Advisor behavior
 
@@ -129,8 +129,10 @@ These are defense-in-depth boundaries. Shared skill instructions still define wh
 
 Claude supports concurrent subagents, but framework parallelism remains **plan-controlled only**. Do not use native parallel capability unless the approved plan marks tasks parallel-safe/eligible and parallel execution has been selected.
 
-## Current limitation
+## Current status
 
-The native files are generated but are not automatically merged into `~/.claude/settings.json` or `~/.claude/agents/` yet. That safe install/update/uninstall work belongs to `INSTALLER.md`. After changing profiles, re-render/re-sync the native files; changing `AI_PROFILE` alone does not rewrite existing generated subagents.
+On Windows, the installer now renders/syncs Claude native agents, merges framework-owned settings, preserves unrelated `~/.claude/settings.json` content, and maintains AiIndex MCP registration idempotently.
+
+The main remaining platform limitation is validation rather than design: Linux support exists but has not completed the same live lifecycle test pass as Windows. Claude behavioral E2E coverage can also be expanded separately without blocking the Windows installer lifecycle.
 
 For full usage see `README.md`, `HELP.md`, and `docs/model-routing.md`.

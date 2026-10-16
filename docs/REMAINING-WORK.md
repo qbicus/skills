@@ -1,9 +1,9 @@
 # AI Framework — Remaining Work
 
-Status: **Codex runtime/E2E verified; Windows installer implementation complete pending live validation; Claude E2E deferred; Linux interactive UI pending**
+Status: **Codex runtime/E2E verified; Windows x64 installer lifecycle live-validated for Codex and Claude; Claude behavioral E2E expansion deferred; Linux live validation/interactive polish pending**
 
 
-> 2026-10-16 update: provider routing, native Codex/Claude agent generation, strict runtime fallback orchestration, substantial-work advisor checkpoints, bounded workers, and plan-controlled parallel execution are implemented. Live Codex validation now covers native role invocation, model fallback, substantial `new-feature`, researcher/executor delegation, advisor plan/completion checkpoints, and explicit parallel execution. Claude implementation remains statically validated but live E2E is intentionally deferred to avoid company-limit usage. Windows installer core + interactive UI are implemented and now require live validation; Linux interactive UI remains to be completed. Installation/update lifecycle remains owned by `INSTALLER.md`.
+> 2026-10-16 update: provider routing, native Codex/Claude agent generation, strict runtime fallback orchestration, substantial-work advisor checkpoints, bounded workers, and plan-controlled parallel execution are implemented. Live Codex validation covers native role invocation, model fallback, substantial `new-feature`, researcher/executor delegation, advisor plan/completion checkpoints, explicit parallel execution, and repeated-failure advisor behavior. Windows x64 installer lifecycle is live-validated for Codex and Claude. Claude behavioral E2E expansion remains intentionally deferred; Linux lifecycle validation and interactive polish are next. Installation/update lifecycle remains owned by `INSTALLER.md`.
 
 This checklist tracks the remaining work after the provider-neutral role model, advisor skill, substantial-work marker, bounded workers, plan-controlled parallel execution, provider config files, README/help updates, and initial skill standardization were added.
 
@@ -44,7 +44,7 @@ For each role:
 ## 3. Codex runtime integration
 
 - [x] Verify the current Codex mechanism for model selection/delegation/subagents.
-- [x] Map `primary` to the selected high-reasoning Codex model.
+- [x] Keep `primary` as the owning Codex thread and retain provider `primary` metadata for routing/fallbacks without overriding the active session model.
 - [x] Map `executor` to the selected implementation model.
 - [x] Map `researcher` to the selected research model.
 - [x] Map `advisor` to the selected independent review model.
@@ -57,7 +57,7 @@ For each role:
 ## 4. Claude runtime integration
 
 - [x] Verify the current Claude Code mechanism for model selection, subagents, effort, and advisor usage.
-- [x] Map `primary` to the selected Claude high-reasoning model.
+- [x] Keep `primary` as the owning Claude conversation and retain provider `primary` metadata for routing/fallbacks without overriding the active session model.
 - [x] Map `executor` to the selected Claude implementation model.
 - [x] Map `researcher` to the selected Claude research model.
 - [x] Map `advisor` to the selected advisor/reviewer model.

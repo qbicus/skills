@@ -1,6 +1,6 @@
 # Codex Setup
 
-> Automated installation/update/uninstall is still pending. The runtime adapter and native Codex fragments are implemented; the installer will merge them safely into the user's Codex configuration without replacing unrelated settings.
+> Windows installer lifecycle support is implemented and live-validated for Codex. The installer safely merges framework-owned Codex wiring while preserving unrelated user configuration. Linux support is implemented but still pending the same live validation pass.
 
 ## Global folders
 
@@ -39,7 +39,7 @@ Global Codex routing profiles:
 %USERPROFILE%\.ai\providers\codex.high.yml
 ```
 
-Select `low`, `medium`, or `high` with `--profile` or `AI_PROFILE`; `medium` is the default/recommended profile.
+Select `low`, `medium`, or `high` with `--profile` or `AI_PROFILE`; `medium` is the default/recommended delegated-role profile. The active primary Codex model remains the model selected for the current Codex session; framework profiles do not override that host/session choice.
 
 Optional repository overrides:
 
@@ -107,7 +107,7 @@ agents/ai-advisor.toml
 agents/ai-fast.toml
 ```
 
-The renderer intentionally does **not** write into `~/.codex`. The installer will own safe merge/update/uninstall and preserve unrelated Codex settings and agents. After changing profiles, re-render/re-sync the native files; changing `AI_PROFILE` alone does not rewrite existing generated agents.
+The renderer itself intentionally does **not** write into `~/.codex`; the installer owns safe merge/update/uninstall and preserves unrelated Codex settings and agents. Normal users should use **Change profiles** or **Update / Repair** in the installer rather than manually copying rendered fragments.
 
 ### Fallback testing
 
@@ -150,8 +150,10 @@ or choose a project type:
 & "$env:USERPROFILE\.ai\init-project.ps1" -Type vb-migration
 ```
 
-## Current limitation
+## Current status
 
-Native files are generated under `~/.ai/generated/codex/` (or another explicit `--render-native` output directory). The generated Codex config fragment points directly at those rendered agent files, so the agents do not need to be copied into `~/.codex/agents/`. Automatic safe merging into `~/.codex/config.toml` is intentionally deferred to the installer; until then, merge only the generated `[agents]` sections and preserve unrelated Codex configuration.
+On Windows, the installer now renders native files under `~/.ai/generated/codex/` and safely merges the framework-owned Codex configuration needed to use them. It preserves unrelated `~/.codex/config.toml` content and canonical framework skill links.
+
+The main remaining platform limitation is validation rather than design: Linux support exists but has not completed the same live lifecycle test pass as Windows.
 
 For full command/skill help, see `README.md`, `HELP.md`, and `docs/model-routing.md`.

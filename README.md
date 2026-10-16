@@ -16,7 +16,7 @@ or:
 
 It is the source of truth for company rules, reusable skills, provider/model-routing policy, prompt starters, project templates, repository-intelligence guidance, scripts, and hooks.
 
-> **Installation status:** Windows and Linux bootstrap/lifecycle installers are implemented. Live platform validation is still required before treating them as production-ready.
+> **Installation status:** Windows x64 has been live-validated for Codex and Claude Code. Linux support is implemented but still needs live validation before it should be treated as production-ready.
 
 ## Quick help
 
@@ -27,6 +27,29 @@ It is the source of truth for company rules, reusable skills, provider/model-rou
 - Claude setup notes: [`docs/setup-claude.md`](docs/setup-claude.md)
 - Global agent rules: [`AGENTS.md`](AGENTS.md)
 - Claude global bridge: [`CLAUDE.md`](CLAUDE.md)
+
+## Windows colleague quick start
+
+Most team members can use this two-step flow.
+
+1. Install or repair the global framework:
+
+```powershell
+irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1 | iex
+```
+
+Choose **Install**, select **Codex**, **Claude**, or **Both**, then choose a usage profile. `medium` is the recommended default.
+
+2. Open an existing code repository in Codex/Claude and run:
+
+```text
+Use repo-init to initialize this existing repository for our AI framework.
+Set up Graphify, AiIndex, repo-local configuration and gitignore entries as appropriate.
+Preserve all existing config and code.
+Inspect first, show me the planned changes, then proceed.
+```
+
+`repo-init` preserves existing project configuration, asks before broad full/rebuild indexing, and reports exactly what it changed.
 
 ## Core idea
 
@@ -42,7 +65,7 @@ They request one of five roles:
 | `advisor` | Independent plan/stuck/completion review |
 | `fast` | Trivial low-risk routing/mechanical decisions |
 
-Provider profiles map those roles to concrete models and effort levels. `medium` is the default/recommended profile:
+Provider profiles map delegated roles to concrete models and effort levels. The active **primary** model remains the model selected for the current Codex/Claude session; choosing a framework profile does not override that host/session model. `medium` is the default/recommended delegated-role profile:
 
 ```text
 ~/.ai/providers/codex.yml          # medium (default)
@@ -94,7 +117,20 @@ Targets can be `codex`, `claude`, or `both`, and provider profiles can be `low`,
 
 ### Windows
 
-Run with no arguments for the interactive installer/maintenance console:
+For a fresh install, the shortest path is:
+
+```powershell
+irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1 | iex
+```
+
+If you prefer to inspect the bootstrap before running it:
+
+```powershell
+irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1 -OutFile install.ps1
+.\install.ps1
+```
+
+The bootstrap ensures the framework is available under `%USERPROFILE%\.ai` and then opens the installer. For an existing install, run the maintenance console directly:
 
 ```powershell
 & "$env:USERPROFILE\.ai\install.ps1"
@@ -113,13 +149,9 @@ Non-interactive commands remain available:
 & "$env:USERPROFILE\.ai\install.ps1" uninstall -Target claude -Yes
 ```
 
-One-line bootstrap from the public framework repository:
-
-```powershell
-irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1 | iex
-```
-
 ### Linux
+
+> Linux lifecycle support is implemented but has not yet completed the same live validation pass as Windows.
 
 From an existing checkout/install:
 
@@ -185,7 +217,7 @@ Repository overrides are read conceptually from:
 <repo>/.ai/providers/codex.<profile>.yml
 ```
 
-The framework can now resolve effective Codex routing and render native Codex custom-agent/config fragments. The installer is still responsible for safely merging those fragments into `~/.codex` while preserving unrelated configuration. See [`docs/setup-codex.md`](docs/setup-codex.md).
+The framework resolves effective Codex routing and renders native Codex custom-agent/config fragments. The installer safely merges the framework-owned wiring into `~/.codex` while preserving unrelated configuration. See [`docs/setup-codex.md`](docs/setup-codex.md).
 
 ### Claude Code
 
@@ -307,35 +339,37 @@ python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --render-n
 python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider claude --render-native "$env:USERPROFILE\.ai\generated\claude"
 ```
 
-Add `--profile low|medium|high` before rendering to switch the native client wiring. After a profile change, re-render/re-sync native client configuration; changing `AI_PROFILE` alone does not rewrite already-generated native agents.
+Add `--profile low|medium|high` before rendering when using the helper manually. Normal users should use the installer's **Change profiles** action, which persists the selection and regenerates/re-syncs the provider wiring. Setting `AI_PROFILE` only changes helper resolution for that process; it does not rewrite already-generated native agents.
 
 Use `--repo <path>` when repository overrides should be included. The renderer does not edit native client configuration directly; safe merge/update/uninstall belongs to the installer.
 
 ## Usage profiles
 
-| Profile | Intent | Typical behavior |
+| Profile | Intent | Typical delegated-role behavior |
 |---|---|---|
-| `low` | Conserve usage/quota | Lower effort, cheaper capable models, max concurrency `2` |
-| `medium` | Recommended default | Balanced primary/executor split, max concurrency `4` |
-| `high` | Quality-first difficult work | Stronger/higher-effort execution and review, max concurrency `4` |
+| `low` | Conserve usage/quota | Lower-effort workers, max concurrency `2` |
+| `medium` | Recommended default | Balanced workers/review, max concurrency `4` |
+| `high` | Quality-first difficult work | Stronger/higher-effort workers and review, max concurrency `4` |
 
-Profiles change model/effort/concurrency policy, not the skill workflow contract: substantial-only advisor checkpoints, bounded workers, fallback behavior, and plan-only parallelism remain in force.
+The **primary model is host/session controlled**. For example, if Codex is currently running GPT-6.1 Sol and the framework profile is `low`, the primary thread stays GPT-6.1 Sol while the delegated executor/researcher/advisor/fast roles use the `low` profile. Profiles do not silently change the model selected in the Codex or Claude UI/session.
 
-Current defaults:
+Profiles change delegated model/effort/concurrency policy, not the skill workflow contract: substantial-only advisor checkpoints, bounded workers, fallback behavior, and plan-only parallelism remain in force.
 
-| Codex profile | primary | executor | researcher | advisor | fast | max agents |
-|---|---|---|---|---|---|---:|
-| `low` | GPT-5.6 Sol / medium | GPT-5.6 Sol / low | GPT-5.6 Sol / low | GPT-5.6 Sol / low | GPT-6 Luna / low | 2 |
-| `medium` | GPT-6 Astra / high | GPT-5.6 Sol / medium | GPT-5.6 Sol / medium | GPT-5.6 Sol / medium | GPT-6 Luna / low | 4 |
-| `high` | GPT-6 Astra / high | GPT-6 Sol / high | GPT-6 Sol / high | GPT-6 Sol / high | GPT-6 Luna / low | 4 |
+Current delegated-role defaults:
 
-| Claude profile | primary | executor | researcher | advisor | fast | max agents |
-|---|---|---|---|---|---|---:|
-| `low` | Sonnet / medium | Sonnet / low | Sonnet / low | Sonnet / low | Haiku / low | 2 |
-| `medium` | Opus / high | Sonnet / medium | Sonnet / medium | Sonnet / medium | Haiku / low | 4 |
-| `high` | Opus / high | Sonnet / high | Sonnet / high | Opus / high | Haiku / low | 4 |
+| Codex profile | executor | researcher | advisor | fast | max agents |
+|---|---|---|---|---|---:|
+| `low` | GPT-5.6 Sol / low | GPT-5.6 Sol / low | GPT-5.6 Sol / low | GPT-6 Luna / low | 2 |
+| `medium` | GPT-5.6 Sol / medium | GPT-5.6 Sol / medium | GPT-5.6 Sol / medium | GPT-6 Luna / low | 4 |
+| `high` | GPT-6 Sol / high | GPT-6 Sol / high | GPT-6 Sol / high | GPT-6 Luna / low | 4 |
 
-These are recommendations, not guarantees of account availability. Runtime fallback and installer/Doctor checks should handle unavailable models without hard-coding assumptions about a user's plan or workspace.
+| Claude profile | executor | researcher | advisor | fast | max agents |
+|---|---|---|---|---|---:|
+| `low` | Sonnet / low | Sonnet / low | Sonnet / low | Haiku / low | 2 |
+| `medium` | Sonnet / medium | Sonnet / medium | Sonnet / medium | Haiku / low | 4 |
+| `high` | Sonnet / high | Sonnet / high | Opus / high | Haiku / low | 4 |
+
+Provider YAMLs may still contain a `primary` role entry for framework routing metadata/fallback resolution, but it is not an instruction for the installer to replace the active main-session model. Model availability also varies by account/workspace, so runtime fallback and Doctor checks must not assume every configured model is available.
 
 ## Important orchestration defaults
 
@@ -565,6 +599,19 @@ Example:
 Use session-close for the current feature before we stop today.
 ```
 
+### `repo-init`
+
+Initialize a new or existing repository for this framework without overwriting unrelated project configuration. It inspects the repository first, proposes the intended changes, scaffolds missing project AI files, configures repository intelligence (AiIndex and Graphify) as appropriate, updates generated-data ignore rules, and verifies the resulting setup.
+
+Typical prompt:
+
+```text
+Use repo-init to initialize this existing repository for our AI framework.
+Set up Graphify, AiIndex, repo-local configuration and gitignore entries as appropriate.
+Preserve all existing config and code.
+Inspect first, show me the planned changes, then proceed.
+```
+
 ### Architecture / TAS skills
 
 Use the TAS sequence for repository/platform architecture documentation:
@@ -594,7 +641,32 @@ It also forwards repository initialization:
 python "$env:USERPROFILE\.ai\scripts\ai.py" repo-init --type dotnet --non-interactive
 ```
 
-A future installer may expose this helper as a shorter `ai` command; do not assume that shim exists until the installation work is completed.
+The helper can always be invoked through Python. Do not assume a separate global `ai` shim exists unless your environment explicitly provides one.
+
+## Initialize an existing repository
+
+After the framework is installed globally, open the repository in Codex or Claude and ask the agent to use `repo-init`. This is the recommended first-run workflow for an existing codebase because the skill can inspect the repository before changing anything.
+
+Recommended prompt:
+
+```text
+Use repo-init to initialize this existing repository for our AI framework.
+Set up Graphify, AiIndex, repo-local configuration and gitignore entries as appropriate.
+Preserve all existing config and code.
+Inspect first, show me the planned changes, then proceed.
+```
+
+The workflow should:
+
+- preserve existing source files, Git history, `AGENTS.md`, `CLAUDE.md`, and unrelated configuration;
+- create only missing framework project scaffolding;
+- ensure `.ai-index.json` exists when AiIndex is enabled;
+- keep generated AiIndex data (`.ai-index/`) and Graphify output (`graphify-out/`) out of Git and out of each other's indexes where appropriate;
+- initialize or refresh repository intelligence only after showing the planned changes;
+- treat a full/rebuild index as an explicit potentially expensive operation and obtain approval before running it;
+- verify AiIndex/Graphify availability and report anything that remains manual.
+
+For deterministic scaffolding without an agent, use the commands in the next section.
 
 ## Project initialization commands
 
@@ -750,8 +822,15 @@ Before switching projects or ending meaningful implementation work, use `session
 
 Do not run it for simple Q&A with no project changes.
 
-## Remaining installation work
+## Validation status and remaining work
 
-The Windows interactive installer and shared lifecycle core are implemented. Remaining work is primarily live validation/hardening of Windows Codex + Claude flows, then implementing the equivalent interactive Linux experience and validating Linux Codex. See `INSTALLER.md` and `docs/REMAINING-WORK.md`.
+Windows x64 has completed the live installer lifecycle pass for Codex and Claude Code, including install, Doctor, Update / Repair, profile changes, update checks, preview behavior, and Codex uninstall/reinstall coverage. The current Windows installer is the primary supported colleague path.
 
-Doctor and uninstall are intentionally non-mutating with respect to system prerequisites: they require an existing compatible Python runtime and never install Git, Python, or uv. Python, Git, and uv are never removed automatically during uninstall.
+Still to complete before calling the whole cross-platform installer production-ready:
+
+- live Linux x64 lifecycle validation (Codex first, then Claude where available);
+- Linux ARM64 validation where hardware/CI is available;
+- final Linux-specific interactive polish and troubleshooting checks;
+- optional future macOS validation if/when that platform is actively supported by the team.
+
+See [`docs/REMAINING-WORK.md`](docs/REMAINING-WORK.md) for engineering validation notes.

@@ -24,5 +24,7 @@ __pycache__/
 *.tgz
 SHA256SUMS
 
-# Keep the sqlite-vec distribution assets in Git
-!native/sqlite-vec/*.tar.gz
+
+# Repository-intelligence generated data
+.ai-index/
+graphify-out/

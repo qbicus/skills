@@ -1,45 +1,119 @@
-# Skill: repo-init
+---
+name: repo-init
+description: "Initialize a new or existing repository for the shared AI framework. Inspect first, preserve existing project configuration, scaffold only missing framework files, set up AiIndex and Graphify repository intelligence as appropriate, maintain generated-data ignore rules, and verify the resulting setup. Use when a user asks to initialize/onboard an existing repo, set up AiIndex/Graphify, or prepare a repository for Codex/Claude framework workflows."
+---
 
-## Purpose
+# Repo Init
 
-Initialize a new or existing repository for AI-agent work using the shared framework.
+Initialize a repository safely for framework-driven AI work. Treat existing code and project configuration as authoritative; add only what is needed.
 
-## Rules
+## Required behavior
 
-- Create only missing files and folders.
-- Do not overwrite existing `AGENTS.md`, `CLAUDE.md`, `.ai/`, `.codex/`, or project notes.
-- If a file exists, leave it unchanged and report it as skipped.
-- Project instructions override global instructions.
-- Use templates from `%USERPROFILE%\.ai\templates` or `~/.ai/templates`.
+1. **Inspect before changing anything.**
+   - Identify the repository root and project type(s).
+   - Check existing `AGENTS.md`, `CLAUDE.md`, `.ai/`, `.ai-index.json`, `.ai-index/`, `graphify-out/`, `.gitignore`, and any existing Graphify/AiIndex setup.
+   - Check whether AiIndex MCP/CLI and Graphify are available from the installed global framework.
+   - Do not assume a repository is uninitialized because one expected file is missing.
 
-## Default files to create
+2. **Show the plan first.**
+   - Briefly list files/configuration that would be created or modified.
+   - Call out any potentially expensive operation, especially a full/rebuild AiIndex index or Graphify rebuild.
+   - For an existing repository, wait for user approval before running a full/rebuild index or other broad analysis operation.
 
-```text
-AGENTS.md
-CLAUDE.md
-.ai/project-overview.md
-.ai/architecture.md
-.ai/current-work.md
-.ai/decisions.md
-.ai/pitfalls.md
-.ai/commands.md
-.ai/testing.md
-.ai/deployment.md
-.ai/skills/
-.ai/prompts/
-.ai/.session-state.json
-```
+3. **Preserve existing project configuration.**
+   - Never overwrite unrelated `AGENTS.md`, `CLAUDE.md`, project notes, provider overrides, or source/config files.
+   - Project instructions override global framework instructions.
+   - Prefer additive edits to `.gitignore`; preserve existing patterns and comments.
+   - If framework-generated files already exist, update/repair only when the change is clearly framework-owned and safe. Otherwise report the difference instead of replacing it.
 
-## Optional modes
+4. **Scaffold missing framework project files.**
+   Use the shared project templates as the baseline. Typical files include:
 
-- `--dry-run`: show what would be created.
-- `--type dotnet`: add .NET-specific templates.
-- `--type vb-migration`: add VB.NET migration templates.
-- `--with-codex-hooks`: add project-local Codex hooks if missing.
-- `--force-generated`: overwrite only files that contain the generated template marker.
+   ```text
+   AGENTS.md
+   CLAUDE.md
+   .ai/project-overview.md
+   .ai/architecture.md
+   .ai/current-work.md
+   .ai/decisions.md
+   .ai/pitfalls.md
+   .ai/commands.md
+   .ai/testing.md
+   .ai/deployment.md
+   .ai/test-cases/
+   .ai/providers/
+   .ai/skills/
+   .ai/prompts/
+   .ai/.session-state.json
+   .ai-index.json
+   ```
 
-## Example command
+   Do not create repository provider overrides unless the repository actually needs behavior different from the selected global provider profile.
+
+5. **Set up AiIndex.**
+   - Ensure `.ai-index.json` exists and is appropriate for the repository languages/layout.
+   - Preserve a valid existing config; do not replace it just to match the template.
+   - Ensure `.ai-index/` is ignored by Git.
+   - Ensure generated Graphify output such as `graphify-out/` is excluded from AiIndex scanning when relevant.
+   - Prefer AiIndex MCP tools for agent-driven setup/search when available (`init_project`, `index_status`, `index_project`, `search_code`). Use the installed CLI when MCP is unavailable or the user explicitly requests CLI usage.
+   - Do not silently run a full/rebuild index on a substantial existing repository. Explain it and obtain approval first. Incremental/changed indexing may be used later as normal maintenance.
+
+6. **Set up Graphify repository intelligence.**
+   - Use the installed Graphify integration/skill rather than installing a second repository-local copy of Graphify.
+   - Detect existing Graphify output before rebuilding it.
+   - Keep generated Graphify output (normally `graphify-out/`) out of Git unless the repository explicitly chooses to version it.
+   - Follow the installed Graphify skill/tool instructions for the actual project analysis/build command rather than inventing provider-specific commands.
+
+7. **Maintain `.gitignore`.**
+   Add missing generated/local entries conservatively. Typical entries are:
+
+   ```gitignore
+   # AI repository intelligence (generated/local)
+   .ai-index/
+   graphify-out/
+   ```
+
+   `.ai-index.json` is configuration and is normally intended to be committed. The repo-local `.ai/` folder also contains project knowledge/configuration and should not be blanket-ignored unless the project explicitly wants it local-only.
+
+8. **Verify the result.**
+   - Confirm the expected framework files exist or were intentionally preserved.
+   - Check AiIndex status/configuration and, when approved, complete the initial index.
+   - Confirm Graphify is available and existing/generated graph output is usable.
+   - Check `git status` and report exactly what repo files changed.
+   - Report skipped files, manual steps, or unavailable tools clearly.
+
+## Deterministic scaffold helper
+
+For scaffold-only setup, the shared helper can be used directly:
 
 ```powershell
-ai repo-init --type dotnet
+& "$env:USERPROFILE\.ai\init-project.ps1"
 ```
+
+or:
+
+```powershell
+python "$env:USERPROFILE\.ai\scripts\ai.py" repo-init --type dotnet --non-interactive
+```
+
+The helper creates missing template files without overwriting existing files. The full `repo-init` skill remains responsible for repository inspection, AiIndex/Graphify setup, ignore rules, approval of expensive operations, and verification.
+
+## Optional scaffold modes
+
+- `--dry-run`: show what the deterministic helper would create.
+- `--type dotnet`: add .NET-specific templates.
+- `--type vb-migration`: add VB.NET migration templates.
+- `--type go`, `--type nextjs`, `--type python`: add project-type templates.
+- `--with-codex-hooks`: add project-local Codex hooks if missing.
+- `--with-graphify-claude`: install/normalize the optional Claude Graphify project integration when needed.
+
+## Output
+
+Finish with a concise summary containing:
+
+- repository type(s) detected;
+- files created/modified/skipped;
+- AiIndex status and whether an initial/full index was run;
+- Graphify status/output;
+- `.gitignore` changes;
+- remaining manual actions or warnings.

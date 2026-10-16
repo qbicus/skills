@@ -1,5 +1,7 @@
 # Installer internals
 
+Windows x64 is the currently live-validated lifecycle path. Linux shares this core but still requires live lifecycle validation.
+
 Public entry points:
 
 - `install.ps1`

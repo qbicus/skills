@@ -1,5 +1,7 @@
 # Skill List
 
+18 canonical framework skills are installed for supported clients.
+
 - `nf-spec` (used by `new-feature`)
 - `nf-design` (used by `new-feature`)
 - `nf-tasks` (used by `new-feature`)
@@ -13,6 +15,7 @@
 - `session-close` (standalone)
 - `code-review` (standalone)
 - `debug` (standalone)
+- `repo-init` (standalone; initializes/onboards repositories for framework use)
 - `tas-01-project-architecture-analyzer` (standalone)
 - `tas-02-architecture-project-grouper` (standalone)
 - `tas-03-architecture-normalizer` (standalone)
@@ -75,6 +78,10 @@ Reviews code across correctness, security, architecture, observability, and test
 ### `debug`
 Standalone logs-first debugging workflow.
 Reads production or build logs first, identifies the real failure pattern, narrows the root cause, and only then proposes or applies fixes.
+
+### `repo-init`
+Standalone repository onboarding and repair workflow.
+Inspects first, preserves existing project configuration, scaffolds missing framework files, configures AiIndex and Graphify repository intelligence as appropriate, maintains generated-data ignore rules, and verifies the resulting setup.
 
 ### `tas-01-project-architecture-analyzer`
 Standalone repository architecture profiling workflow.

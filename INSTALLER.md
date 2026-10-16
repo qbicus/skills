@@ -1,6 +1,6 @@
 # AI Framework Installer — Implementation Checklist
 
-Status: **implementation present — Windows live validation next, then Linux live validation**
+Status: **Windows x64 lifecycle live-validated for Codex and Claude — Linux live validation next**
 
 The installer owns the global AI framework installation lifecycle for Codex and Claude while preserving unrelated user configuration, skills, MCP registrations, repository overrides, and project indexes.
 
@@ -27,14 +27,21 @@ Implemented:
 - non-interactive CLI compatibility;
 - Python/Git/uv bootstrap and permanent uninstall preservation.
 
+Validated on Windows x64:
+
+- interactive menu and Doctor;
+- Codex install, Update / Repair, profile changes, update checks, preview, uninstall/reinstall;
+- Claude install, Update / Repair, profile changes, native agent/settings sync, Graphify preservation, and idempotent AiIndex MCP registration;
+- safe skill-link adoption/repair and real-directory/junction uninstall handling;
+- AiIndex current-version skip and Graphify preservation.
+
 Still to do / validate:
 
-- live-test the new Windows interactive menu and Codex lifecycle;
-- live-test Windows Claude install/repair/profile/uninstall wiring;
-- finish optional shared-component purge UX after the last client is removed;
-- implement the equivalent interactive Linux menu;
 - live-test Linux Codex lifecycle;
 - live-test Linux Claude when a test installation is available;
+- finish Linux interactive polish;
+- validate Linux ARM64 where hardware/CI is available;
+- optional shared-component purge UX can be refined later;
 - deeper drift/hash/model-availability diagnostics can be added after lifecycle validation.
 
 ## 1. Supported operations
@@ -72,7 +79,7 @@ Useful common options:
 
 ## 2. Platform support
 
-- [ ] Windows x64
+- [x] Windows x64
 - [ ] Windows ARM64
 - [ ] Linux x64
 - [ ] Linux ARM64

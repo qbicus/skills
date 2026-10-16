@@ -68,6 +68,7 @@ Common mappings:
 - Modernization planning: `skills/modernize-plan`
 - Parallel execution: `skills/parallel-exec`
 - Architecture/TAS workflows: `skills/tas-*`
+- Repository initialization/onboarding: `skills/repo-init`
 - Independent checkpoint review: `skills/advisor`
 
 
@@ -99,7 +100,7 @@ When native subagents are available, use the framework-generated role agents:
 - `ai-advisor` for portable advisor fallback/review;
 - `ai-fast` for `fast`.
 
-`primary` is the owning/main thread. The native client default for that thread is generated from the provider `primary` mapping.
+`primary` is the owning/main thread. Its active model is controlled by the current Codex/Claude host session; framework low/medium/high profiles do not override that user-selected main-session model. Provider `primary` entries remain routing/fallback metadata only.
 
 ### Mandatory role fallback protocol
 

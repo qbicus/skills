@@ -1,6 +1,8 @@
 # Prompt: Repo Init
 
 ```text
-Use the `repo-init` skill.
-Initialize this repository for AI-agent work. Create only missing files and folders. Do not overwrite existing AGENTS.md, CLAUDE.md, .ai files, or existing project notes.
+Use repo-init to initialize this existing repository for our AI framework.
+Set up Graphify, AiIndex, repo-local configuration and gitignore entries as appropriate.
+Preserve all existing config and code.
+Inspect first, show me the planned changes, then proceed.
 ```

@@ -18,6 +18,9 @@ Quick operator reference. See `README.md` for full documentation.
 
 ## Role routing
 
+The main `primary` model is the model selected in the active Codex/Claude session. Framework low/medium/high profiles control delegated roles and their fallbacks; they do not override the host/session model.
+
+
 ```text
 primary     planning / architecture / material decisions / final ownership
 executor    bounded implementation / edits / focused tests
@@ -79,6 +82,19 @@ python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --set-prof
 | `tas-04-*` | Generate TAS documents | See architecture skills README |
 
 Claude Code exposes installed skills through `/name` commands. Natural-language `Use the <name> skill...` is portable across clients.
+
+### `repo-init`
+
+Use when onboarding a new/existing repository to the framework. It inspects first, preserves existing project configuration, scaffolds missing framework files, sets up AiIndex/Graphify repository intelligence as appropriate, updates generated-data ignore rules, asks before broad full/rebuild indexing, and verifies the result.
+
+Recommended prompt:
+
+```text
+Use repo-init to initialize this existing repository for our AI framework.
+Set up Graphify, AiIndex, repo-local configuration and gitignore entries as appropriate.
+Preserve all existing config and code.
+Inspect first, show me the planned changes, then proceed.
+```
 
 ## New feature flow
 
@@ -153,7 +169,7 @@ python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider claude --render-
 
 Add `--repo <repo-root>` to include repository overrides. Generated role agents are `ai-executor`, `ai-researcher`, `ai-advisor`, and `ai-fast`; `primary` remains the owning thread.
 
-To test fallback selection, repeat `--available-model <model>` with `--role` or `--render-native`. To switch cost/quality posture, add `--profile low|medium|high`; re-render native files after changing the profile.
+To test fallback selection, repeat `--available-model <model>` with `--role` or `--render-native`. For normal profile changes use the installer's **Change profiles** action so native files are regenerated/re-synced automatically; `--profile low|medium|high` remains useful for one-off helper diagnostics/rendering.
 
 ## Project init
 
@@ -209,7 +225,13 @@ search_code
 
 ## Installation / lifecycle
 
-Windows interactive console:
+Fresh Windows bootstrap:
+
+```powershell
+irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1 | iex
+```
+
+Existing Windows install / maintenance console:
 
 ```powershell
 & "$env:USERPROFILE\.ai\install.ps1"

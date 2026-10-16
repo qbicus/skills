@@ -54,13 +54,11 @@ Current pinned upstream version:
 0.1.10-alpha.4
 ```
 
-The original downloaded archives are not required after extraction and should not be committed to this framework.
+The original downloaded archives are not required after extraction and are intentionally **not** committed to this framework. Only the extracted native library needed by each supported runtime is kept here.
 
 ## Git policy
 
-The platform runtime folders are installation payloads and may be excluded from Git when binaries are distributed through release assets.
-
-Keep this README tracked so the expected directory structure, provenance, and supported RIDs remain documented.
+Keep the extracted `vec0` runtime binaries and this README tracked because the installed AiIndex runtime resolves them from `~/.ai/native/sqlite-vec/<rid>/`. Do not commit the upstream `.tar.gz` download archives or other temporary extraction files.
 
 ## Updating sqlite-vec
 

@@ -21,7 +21,7 @@ Both providers expose three cost/quality profiles:
 | Profile | Intent | Typical policy |
 |---|---|---|
 | `low` | Conserve usage/quota | Lower reasoning effort, cheaper capable models, lower concurrency |
-| `medium` | Recommended/default | Balanced flagship-primary + mid-tier execution/review |
+| `medium` | Recommended/default | Balanced delegated execution/review |
 | `high` | Quality-first difficult work | Stronger/higher-effort execution and review |
 
 `medium` is the default when no explicit, environment, or saved per-provider profile is set.
@@ -39,11 +39,10 @@ Global profile files:
 
 Profiles change model/effort/concurrency policy. They do **not** disable the shared workflow contract: advisor checkpoints remain substantial-only unless explicitly overridden, workers remain bounded, fallback remains explicit, and parallel execution remains plan-only.
 
-Current recommended mappings:
+Current delegated-role mappings:
 
 | Codex | low | medium | high |
 |---|---|---|---|
-| primary | GPT-5.6 Sol / medium | GPT-6 Astra / high | GPT-6 Astra / high |
 | executor | GPT-5.6 Sol / low | GPT-5.6 Sol / medium | GPT-6 Sol / high |
 | researcher | GPT-5.6 Sol / low | GPT-5.6 Sol / medium | GPT-6 Sol / high |
 | advisor | GPT-5.6 Sol / low | GPT-5.6 Sol / medium | GPT-6 Sol / high |
@@ -52,12 +51,13 @@ Current recommended mappings:
 
 | Claude | low | medium | high |
 |---|---|---|---|
-| primary | Sonnet / medium | Opus / high | Opus / high |
 | executor | Sonnet / low | Sonnet / medium | Sonnet / high |
 | researcher | Sonnet / low | Sonnet / medium | Sonnet / high |
 | advisor | Sonnet / low | Sonnet / medium | Opus / high |
 | fast | Haiku / low | Haiku / low | Haiku / low |
 | max agents | 2 | 4 | 4 |
+
+If a provider file also contains a `primary` mapping, treat it as framework routing metadata/fallback information, not as an instruction to overwrite the main session model selected by the user.
 
 Model availability remains account/workspace-specific; fallback and Doctor should treat availability as runtime evidence rather than infer it from model names.
 
@@ -241,7 +241,7 @@ Provider YAML should use the documented schema and 2-space indentation. The help
 
 ## Fallback diagnostics
 
-Normal execution uses the preferred configured models. For diagnostics, tests, and future installer capability probing, restrict the helper to an explicit availability set:
+Normal execution uses the preferred configured models. For diagnostics, tests, and installer capability probing, restrict the helper to an explicit availability set:
 
 ```text
 python ~/.ai/scripts/ai.py provider --provider codex --profile medium --role executor --available-model gpt-6-sol
@@ -269,11 +269,11 @@ Use `--repo <repo-root>` to include repository overrides.
 
 ### Codex
 
-The generated config fragment declares `ai-executor`, `ai-researcher`, `ai-advisor`, and `ai-fast`, while the main thread uses the selected profile's `primary` model/effort. Read-only roles use `sandbox_mode = "read-only"`; executor uses `workspace-write`. `behavior.execution.maxConcurrentAgents` becomes the native concurrency cap, but actual parallel execution still requires plan approval.
+The generated config fragment declares `ai-executor`, `ai-researcher`, `ai-advisor`, and `ai-fast`. The main Codex thread keeps the model selected by the active Codex session; profile rendering does not replace it. Read-only roles use `sandbox_mode = "read-only"`; executor uses `workspace-write`. `behavior.execution.maxConcurrentAgents` becomes the native concurrency cap, but actual parallel execution still requires plan approval.
 
 ### Claude Code
 
-Generated Claude subagents apply the selected profile's `model`, `effort`, and role-specific tool boundaries. The owning/main Claude conversation uses the selected profile's `primary` mapping.
+Generated Claude subagents apply the selected profile's `model`, `effort`, and role-specific tool boundaries. The owning/main Claude conversation keeps the model selected by the active Claude session; the profile does not overwrite it.
 
 ## Advisor behavior
 

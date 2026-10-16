@@ -1,5 +1,7 @@
 # AI Framework Installer
 
+**Status:** Windows x64 is live-validated for Codex and Claude Code. Linux lifecycle support is implemented but still pending the same live validation pass.
+
 Public bootstrap entry points:
 
 - `install.ps1` — Windows interactive + non-interactive installer
@@ -18,7 +20,13 @@ uninstall
 doctor
 ```
 
-Windows with no arguments opens the interactive maintenance console:
+Fresh Windows bootstrap:
+
+```powershell
+irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1 | iex
+```
+
+From an existing checkout/install, Windows with no arguments opens the interactive maintenance console:
 
 ```powershell
 .\install.ps1
@@ -51,7 +59,7 @@ Windows:
 .\install.ps1 doctor
 ```
 
-Linux:
+Linux (implemented; live validation still pending):
 
 ```bash
 ./install.sh install --target codex --profile low --yes
