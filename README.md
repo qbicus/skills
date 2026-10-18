@@ -112,7 +112,7 @@ Change profiles
 Check for updates
 Uninstall
 Doctor / Status
-Preview changes (interactive Windows UI)
+Preview changes (interactive Windows/Linux UI)
 ```
 
 Targets can be `codex`, `claude`, or `both`, and provider profiles can be `low`, `medium`, or `high`.
@@ -847,6 +847,14 @@ When instructions conflict:
 Before switching projects or ending meaningful implementation work, use `session-close` when files changed, decisions were made, blockers appeared, or task status changed.
 
 Do not run it for simple Q&A with no project changes.
+
+## License
+
+The Team AI Framework is released under the [MIT License](LICENSE), allowing
+use, modification, redistribution, and extension subject to the license terms.
+
+Bundled third-party components retain their own licenses. See
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Validation status and remaining work
 
