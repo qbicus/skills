@@ -7,7 +7,7 @@ Public bootstrap entry points:
 - `install.ps1` — Windows interactive + non-interactive installer
 - `install.sh` — Linux interactive bootstrap + non-interactive lifecycle entry point
 
-Both use the shared `installer/installer.py` lifecycle core. The framework requires Git, Python 3.11+, and `uv`; bootstrap installs missing prerequisites where supported. Python, Git, and `uv` are never removed by framework uninstall.
+Both use the shared `installer/installer.py` lifecycle core. The framework requires Git, Python **3.11-3.14**, and `uv`; bootstrap preflights these dependencies and installs missing prerequisites where supported. Fresh Windows bootstrap installs Python 3.14 when a compatible interpreter is not already present. Python, Git, and `uv` are never removed by framework uninstall.
 
 ## Lifecycle
 
@@ -23,7 +23,7 @@ doctor
 Fresh Windows bootstrap:
 
 ```powershell
-irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1 | iex
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1)))
 ```
 
 From an existing checkout/install, Windows with no arguments opens the interactive maintenance console:
@@ -104,6 +104,8 @@ The interactive Windows flow checks for available Framework/AiIndex updates and 
 The Python package is `graphifyy`; the CLI is `graphify`.
 
 An existing Graphify tool and existing client skill integration are preserved. The installer only installs the Graphify tool or client integration when missing.
+
+When installing Graphify, `uv` is explicitly pinned to the framework's selected compatible Python interpreter. This avoids an automatic Python 3.15 selection causing `tree-sitter` to build from source on Windows.
 
 ## Shared state
 

@@ -62,6 +62,45 @@ class InstallerCoreTests(unittest.TestCase):
         self.assertEqual(state["prerequisites"], {})
 
 
+
+    def test_python_supported_range(self):
+        self.assertTrue(installer.python_version_supported((3, 11)))
+        self.assertTrue(installer.python_version_supported((3, 14)))
+        self.assertFalse(installer.python_version_supported((3, 10)))
+        self.assertFalse(installer.python_version_supported((3, 15)))
+
+    def test_graphify_tree_sitter_error_is_actionable(self):
+        msg = installer.graphify_install_error(
+            "error: Failed to build `tree-sitter==0.25.2`\n"
+            "error: Microsoft Visual C++ 14.0 or greater is required."
+        )
+        self.assertIn("Python 3.11-3.14", msg)
+        self.assertIn("tree-sitter", msg)
+        self.assertIn("Original error", msg)
+
+    def test_graphify_install_pins_uv_to_current_python(self):
+        state = installer.default_state()
+        state["graphify"] = {"managedClients": []}
+        run_calls = []
+
+        def fake_run(cmd, **kwargs):
+            run_calls.append(cmd)
+            class Result:
+                returncode = 0
+                stdout = ""
+                stderr = ""
+            return Result()
+
+        with mock.patch.object(installer, "which", side_effect=lambda name: "/usr/bin/uv" if name == "uv" else None), \
+             mock.patch.object(installer, "graphify_executable", side_effect=[None, "/tmp/graphify"]), \
+             mock.patch.object(installer, "graphify_integration_status", return_value=(True, "existing")), \
+             mock.patch.object(installer, "run", side_effect=fake_run):
+            installer.install_graphify(["codex"], state, False, False)
+
+        install_cmd = next(cmd for cmd in run_calls if cmd[:3] == ["/usr/bin/uv", "tool", "install"])
+        self.assertIn("--python", install_cmd)
+        self.assertIn(installer.sys.executable, install_cmd)
+
     def test_framework_semver_comparison(self):
         self.assertTrue(installer.newer_framework_version("0.1.0", "0.2.0"))
         self.assertFalse(installer.newer_framework_version("0.2.0", "0.2.0"))

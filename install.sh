@@ -19,6 +19,7 @@ JSON_OUTPUT=0
 FRAMEWORK_ROOT="${HOME}/.ai"
 MIN_PYTHON_MAJOR=3
 MIN_PYTHON_MINOR=11
+MAX_PYTHON_MINOR=14
 INTERACTIVE_MODE=0
 
 usage() {
@@ -123,13 +124,73 @@ ensure_git() {
 
 python_compatible() {
   local exe="$1"
-  "$exe" -c "import sys; raise SystemExit(0 if sys.version_info >= ($MIN_PYTHON_MAJOR, $MIN_PYTHON_MINOR) else 1)" >/dev/null 2>&1
+  "$exe" -c "import sys; v=sys.version_info; raise SystemExit(0 if v.major == $MIN_PYTHON_MAJOR and $MIN_PYTHON_MINOR <= v.minor <= $MAX_PYTHON_MINOR else 1)" >/dev/null 2>&1
 }
 
 find_python() {
   if command -v python3 >/dev/null 2>&1 && python_compatible "$(command -v python3)"; then command -v python3; return 0; fi
   if command -v python >/dev/null 2>&1 && python_compatible "$(command -v python)"; then command -v python; return 0; fi
   return 1
+}
+
+python_any_version() {
+  local exe=""
+  if command -v python3 >/dev/null 2>&1; then exe="$(command -v python3)"
+  elif command -v python >/dev/null 2>&1; then exe="$(command -v python)"
+  else return 1
+  fi
+  "$exe" -c 'import platform; print(platform.python_version())' 2>/dev/null
+}
+
+detect_package_manager() {
+  local pm
+  for pm in apt-get dnf yum pacman zypper apk; do
+    if command -v "$pm" >/dev/null 2>&1; then printf '%s' "$pm"; return 0; fi
+  done
+  printf 'none'
+}
+
+show_prerequisite_preflight() {
+  local git_status python_status uv_status codex_status claude_status distro pm py any
+  git_status='missing - will install'
+  command -v git >/dev/null 2>&1 && git_status="$(git --version 2>/dev/null || printf installed)"
+
+  py="$(find_python || true)"
+  if [[ -n "$py" ]]; then
+    python_status="$("$py" -c 'import platform,sys; print(platform.python_version()+" ("+sys.executable+") - supported")' 2>/dev/null)"
+  else
+    any="$(python_any_version || true)"
+    if [[ -n "$any" ]]; then
+      python_status="$any - unsupported; install/use Python 3.11-3.14"
+    else
+      python_status='missing - will install from package manager'
+    fi
+  fi
+
+  uv_status='missing - will install'
+  command -v uv >/dev/null 2>&1 && uv_status="$(uv --version 2>/dev/null || printf installed)"
+  codex_status='not detected'
+  if command -v codex >/dev/null 2>&1 || command -v chatgpt >/dev/null 2>&1 || [[ -d "$HOME/.codex" ]]; then codex_status='detected'; fi
+  claude_status='not detected'
+  if command -v claude >/dev/null 2>&1 || [[ -d "$HOME/.claude" ]]; then claude_status='detected'; fi
+  distro='unknown'
+  if [[ -r /etc/os-release ]]; then
+    distro="$(. /etc/os-release; printf '%s' "${PRETTY_NAME:-${ID:-unknown}}")"
+  fi
+  pm="$(detect_package_manager)"
+
+  printf '\n'
+  ui_yellow 'Prerequisite preflight'; printf '\n'
+  printf 'OS           %s\n' "$distro"
+  printf 'Pkg manager  %s\n' "$pm"
+  printf 'Git          %s\n' "$git_status"
+  printf 'Python       %s\n' "$python_status"
+  printf 'uv           %s\n' "$uv_status"
+  printf 'Codex        %s\n' "$codex_status"
+  printf 'Claude       %s\n' "$claude_status"
+  printf '\n'
+  ui_gray 'Supported framework Python: 3.11-3.14.'
+  printf '\n'
 }
 
 install_python_package() {
@@ -161,9 +222,9 @@ ensure_python() {
     return 0
   fi
 
-  say "Compatible Python is missing (minimum ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR})." >&2
+  say "Compatible Python is missing (supported range ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}-${MIN_PYTHON_MAJOR}.${MAX_PYTHON_MINOR})." >&2
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "Would install the current stable Python package provided by the detected Linux package manager." >&2
+    echo "Would install a Python package from the detected Linux package manager, then require version 3.11-3.14." >&2
     export AI_FRAMEWORK_PREREQ_PYTHON_ORIGIN=would-install
     PYTHON_EXE=""
     return 0
@@ -172,7 +233,7 @@ ensure_python() {
   install_python_package || return $?
   found="$(find_python || true)"
   if [[ -z "$found" ]]; then
-    echo "The package manager installed Python, but it is older than ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}. Install a current stable Python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ and rerun." >&2
+    echo "The package manager installed Python outside the supported 3.11-3.14 range. Install Python 3.11-3.14 (3.14 preferred where available) and rerun." >&2
     return 2
   fi
   export AI_FRAMEWORK_PREREQ_PYTHON_ORIGIN=installed-by-framework
@@ -410,7 +471,7 @@ invoke_core_action() {
   else
     PYTHON_EXE="$(find_python || true)"
     if [[ -z "$PYTHON_EXE" ]]; then
-      echo "Python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ is required to run '$selected_action'." >&2
+      echo "Python 3.11-3.14 is required to run '$selected_action'." >&2
       ACTION="$old_action"; DRY_RUN="$old_dry"; YES="$old_yes"; return 2
     fi
     export AI_FRAMEWORK_PREREQ_PYTHON_ORIGIN=pre-existing
@@ -484,7 +545,9 @@ invoke_install_flow() {
   [[ -n "$codex_p" ]] && printf 'Codex   %s\n' "$codex_p"
   [[ -n "$claude_p" ]] && printf 'Claude  %s\n' "$claude_p"
   printf '\n'; ui_gray 'Components: AI Framework, skills, AiIndex CLI/MCP, Graphify, native wiring'; printf '\n'
+  show_prerequisite_preflight
   if [[ "$preview" -eq 0 ]]; then
+    pause_for_menu 'Press Enter to continue to install confirmation'
     single_select 'Continue?' 0 1 'Install' 'Cancel'; confirm_idx="$SINGLE_SELECT_RESULT"
     [[ "$confirm_idx" -ne 0 ]] && return 0
   fi
@@ -500,6 +563,11 @@ invoke_repair_flow() {
   multi_select "$title" "$defaults" 1 "Codex ($codex_current)" "Claude ($claude_current)"
   ((${#MULTI_SELECT_RESULT[@]} == 0)) && return 0
   target="$(selection_to_target "${MULTI_SELECT_RESULT[0]}" "${MULTI_SELECT_RESULT[1]}")"
+
+  clear_screen; show_banner
+  [[ "$preview" -eq 1 ]] && ui_yellow 'Preview Update / Repair' || ui_yellow 'Update / Repair preflight'
+  printf '\n'
+  show_prerequisite_preflight
 
   status="$(get_update_status_json 2>/dev/null || true)"
   if [[ -n "$status" && "$(find_python || true)" != '' ]]; then
@@ -609,13 +677,14 @@ fi
 # ---------- CLI mode ----------
 
 if [[ "$ACTION" == install || "$ACTION" == update-repair ]]; then
+  show_prerequisite_preflight
   ensure_git
   ensure_python
   ensure_uv
 else
   PYTHON_EXE="$(find_python || true)"
   if [[ -z "$PYTHON_EXE" ]]; then
-    echo "Python ${MIN_PYTHON_MAJOR}.${MIN_PYTHON_MINOR}+ is required to run '$ACTION'. Doctor/uninstall do not install system prerequisites automatically." >&2
+    echo "Python 3.11-3.14 is required to run '$ACTION'. Doctor/uninstall do not install system prerequisites automatically." >&2
     exit 2
   fi
   export AI_FRAMEWORK_PREREQ_PYTHON_ORIGIN=pre-existing

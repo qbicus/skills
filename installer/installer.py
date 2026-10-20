@@ -27,6 +27,44 @@ VERSION_PATH = FRAMEWORK_ROOT / "version.json"
 MANAGED_BEGIN = "# BEGIN COMPANY AI FRAMEWORK"
 MANAGED_END = "# END COMPANY AI FRAMEWORK"
 
+SUPPORTED_PYTHON_MIN = (3, 11)
+SUPPORTED_PYTHON_MAX = (3, 14)
+
+
+def python_version_supported(version_info: tuple[int, int] | None = None) -> bool:
+    """Return whether the interpreter is supported by framework tooling.
+
+    The upper bound is intentional: Graphify currently depends on tree-sitter
+    wheels that are not reliably available for Python 3.15 on Windows, causing
+    uv to fall back to a local C/C++ build.
+    """
+    version = version_info or (sys.version_info.major, sys.version_info.minor)
+    return SUPPORTED_PYTHON_MIN <= version <= SUPPORTED_PYTHON_MAX
+
+
+def python_compatibility_text() -> str:
+    current = (sys.version_info.major, sys.version_info.minor)
+    status = "supported" if python_version_supported(current) else "UNSUPPORTED (requires 3.11-3.14)"
+    return f"{platform.python_version()} ({sys.executable}) [{status}]"
+
+
+def graphify_install_error(detail: str) -> str:
+    """Turn common Graphify/uv build failures into actionable diagnostics."""
+    lower = detail.lower()
+    current = f"{sys.version_info.major}.{sys.version_info.minor}"
+    if "microsoft visual c++ 14.0 or greater is required" in lower or (
+        "tree-sitter" in lower and "failed to build" in lower
+    ):
+        return (
+            "Graphify install failed while building tree-sitter. "
+            f"The current Python is {current}. Use a supported Python 3.11-3.14 "
+            "(3.14 preferred on Windows); prebuilt wheels avoid requiring Microsoft "
+            "C++ Build Tools. The installer deliberately does not disable TLS or "
+            "force a source build.\n\nOriginal error:\n" + detail
+        )
+    return "Graphify install failed: " + detail
+
+
 
 def load_json(path: Path, default: Any) -> Any:
     if not path.exists():
@@ -1072,9 +1110,18 @@ def install_graphify(clients: list[str], state: dict[str, Any], dry_run: bool, s
                 print(f"  would run: {' '.join(cmd)} ({detail})")
         return
     if not existing_graphify:
-        proc = run([uv, "tool", "install", package], check=False, capture=True)
-        if proc.returncode != 0 and "already installed" not in ((proc.stderr or "") + (proc.stdout or "")).lower():
-            raise RuntimeError(f"Graphify install failed: {(proc.stderr or proc.stdout or '').strip()}")
+        if not python_version_supported():
+            raise RuntimeError(
+                f"Graphify requires framework Python 3.11-3.14; current interpreter is "
+                f"{platform.python_version()} ({sys.executable}). Install/use Python 3.14 and retry."
+            )
+        # Pin the tool environment to the already-selected compatible framework
+        # interpreter. Without this, uv may choose a newer managed/system Python
+        # (for example 3.15) whose tree-sitter dependency lacks a Windows wheel.
+        proc = run([uv, "tool", "install", package, "--python", sys.executable], check=False, capture=True)
+        combined = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
+        if proc.returncode != 0 and "already installed" not in combined.lower():
+            raise RuntimeError(graphify_install_error(combined))
     graphify = graphify_executable()
     if not graphify:
         # uv tool dir --bin is authoritative when current shell PATH has not refreshed.
@@ -1158,7 +1205,7 @@ def doctor(state: dict[str, Any]) -> int:
     rows: list[tuple[str, str]] = []
     versions = local_versions()
     rows.append(("Git", command_version("git") or "MISSING"))
-    rows.append(("Python", f"{platform.python_version()} ({sys.executable})"))
+    rows.append(("Python", python_compatibility_text()))
     rows.append(("uv", command_version("uv") or "MISSING"))
     rows.append(("Framework", str(FRAMEWORK_ROOT)))
     rows.append(("Framework version", versions.get("framework") or "unknown"))
@@ -1200,7 +1247,7 @@ def doctor(state: dict[str, Any]) -> int:
     issues = 0
     for key, value in rows:
         lower = value.lower()
-        if value == "MISSING" or lower.startswith("missing") or "INVALID" in value:
+        if value == "MISSING" or lower.startswith("missing") or "INVALID" in value or "UNSUPPORTED" in value:
             issues += 1
         if key.endswith(" skills") and "issue" in lower:
             issues += 1

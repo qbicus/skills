@@ -35,7 +35,7 @@ Most team members can use this two-step flow.
 1. Install or repair the global framework:
 
 ```powershell
-irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1 | iex
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1)))
 ```
 
 Choose **Install**, select **Codex**, **Claude**, or **Both**, then choose a usage profile. `medium` is the recommended default.
@@ -117,12 +117,23 @@ Preview changes (interactive Windows/Linux UI)
 
 Targets can be `codex`, `claude`, or `both`, and provider profiles can be `low`, `medium`, or `high`.
 
+### Prerequisites
+
+The installer checks these before installation and shows what is already present versus what it plans to install:
+
+- Git
+- Python **3.11-3.14** (3.14 preferred for a fresh Windows install)
+- `uv`
+- a supported client when selected (Codex/ChatGPT and/or Claude Code)
+
+On Windows, automatic Git/Python installation uses `winget`. On Linux, the installer uses a supported distribution package manager where available. Existing compatible prerequisites are preserved.
+
 ### Windows
 
 For a fresh install, the shortest path is:
 
 ```powershell
-irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1 | iex
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/qbicus/skills/main/install.ps1)))
 ```
 
 If you prefer to inspect the bootstrap before running it:
@@ -170,7 +181,9 @@ Bootstrap from the public framework repository:
 curl -fsSL https://raw.githubusercontent.com/qbicus/skills/main/install.sh | bash
 ```
 
-The bootstrap scripts ensure Git, a compatible Python runtime (3.11+), and `uv`, locate/clone the framework, then hand off to the shared Python installer. Existing compatible Python is preserved; a fresh Windows install selects the highest stable Python 3.x package available through `winget`, while Linux uses the distribution package manager.
+The bootstrap scripts preflight Git, Python, `uv`, Codex/Claude detection, and the available package manager before making prerequisite changes. The framework currently supports **Python 3.11 through 3.14**. Existing compatible Python is preserved; a fresh Windows install uses **Python 3.14** through `winget`. Linux uses the distribution package manager, then verifies that the resulting interpreter is within the supported 3.11-3.14 range. `uv` is required for Graphify tooling and is installed through Astral's official bootstrap when missing.
+
+Python 3.15+ is intentionally not selected for framework tooling yet because Graphify's `tree-sitter` dependency may lack a compatible prebuilt wheel and fall back to requiring local C/C++ build tools.
 
 ### What the installer owns
 

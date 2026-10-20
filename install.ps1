@@ -34,6 +34,8 @@ $script:VerboseRequested = $PSBoundParameters.ContainsKey('Verbose') -or $Verbos
 $ErrorActionPreference = 'Stop'
 $FrameworkRoot = Join-Path $HOME '.ai'
 $MinimumPython = [Version]'3.11'
+$MaximumPython = [Version]'3.14.999'
+$PreferredPythonPackage = 'Python.Python.3.14'
 $DefaultRepositoryUrl = 'https://github.com/qbicus/skills.git'
 $script:InteractiveMode = -not $PSBoundParameters.ContainsKey('Action')
 
@@ -76,7 +78,7 @@ function Test-PythonExecutable([string]$Executable, [string[]]$PrefixArgs = @())
         $probe = & $Executable @PrefixArgs -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}'); print(sys.executable)" 2>$null
         if ($LASTEXITCODE -ne 0 -or -not $probe -or $probe.Count -lt 2) { return $null }
         $version = [Version]$probe[0].Trim()
-        if ($version -lt $MinimumPython) { return $null }
+        if ($version -lt $MinimumPython -or $version -gt $MaximumPython) { return $null }
         $resolved = $probe[1].Trim()
         if (-not (Test-Path $resolved)) { return $null }
         return [PSCustomObject]@{ Version = $version; Executable = $resolved }
@@ -92,10 +94,16 @@ function Find-CompatiblePython {
             if ($result) { return $result }
         }
     }
+
+    # The Windows py launcher may default to a newer interpreter (for example
+    # 3.15) even when a framework-compatible interpreter is installed. Probe
+    # supported versions explicitly from newest to oldest.
     $py = Get-Command py -ErrorAction SilentlyContinue
     if ($py) {
-        $result = Test-PythonExecutable $py.Source @('-3')
-        if ($result) { return $result }
+        foreach ($minor in 14,13,12,11) {
+            $result = Test-PythonExecutable $py.Source @("-3.$minor")
+            if ($result) { return $result }
+        }
     }
 
     $roots = @(
@@ -113,18 +121,44 @@ function Find-CompatiblePython {
     return $null
 }
 
-function Get-LatestWingetPythonId {
-    $output = & winget search --query Python.Python --source winget --accept-source-agreements 2>$null | Out-String
-    $matches = [regex]::Matches($output, 'Python\.Python\.(?<major>\d+)\.(?<minor>\d+)')
-    $items = foreach ($m in $matches) {
-        if ([int]$m.Groups['major'].Value -eq 3) {
-            [PSCustomObject]@{
-                Id = $m.Value
-                Version = [Version]("{0}.{1}" -f $m.Groups['major'].Value, $m.Groups['minor'].Value)
-            }
+function Get-AnyPythonVersion {
+    foreach ($name in @('python','python3','py')) {
+        $cmd = Get-Command $name -ErrorAction SilentlyContinue
+        if (-not $cmd) { continue }
+        try {
+            $prefix = @()
+            if ($name -eq 'py') { $prefix = @('-3') }
+            $probe = & $cmd.Source @prefix -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>$null
+            if ($LASTEXITCODE -eq 0 -and $probe) { return [string]$probe[0].Trim() }
+        } catch { }
+    }
+    return $null
+}
+
+function Show-PrerequisitePreflight {
+    Write-Host ''
+    Write-Host 'Prerequisite preflight' -ForegroundColor Yellow
+    Write-Host ('PowerShell   {0}' -f $PSVersionTable.PSVersion)
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    Write-Host ('Git          {0}' -f $(if ($git) { (& $git.Source --version 2>$null) } else { 'missing - will install' }))
+    $python = Find-CompatiblePython
+    if ($python) {
+        Write-Host ('Python       {0} ({1}) - supported' -f $python.Version, $python.Executable)
+    } else {
+        $any = Get-AnyPythonVersion
+        if ($any) {
+            Write-Host ("Python       $any - unsupported for framework tooling; Python 3.14 will be installed/used")
+        } else {
+            Write-Host 'Python       missing - Python 3.14 will be installed'
         }
     }
-    return $items | Sort-Object Version -Descending | Select-Object -First 1
+    $uv = Get-Command uv -ErrorAction SilentlyContinue
+    Write-Host ('uv           {0}' -f $(if ($uv) { (& $uv.Source --version 2>$null) } else { 'missing - will install' }))
+    Write-Host ('Codex        {0}' -f $(if ((Get-Command codex -ErrorAction SilentlyContinue) -or (Get-Command chatgpt -ErrorAction SilentlyContinue) -or (Test-Path (Join-Path $HOME '.codex'))) { 'detected' } else { 'not detected' }))
+    Write-Host ('Claude       {0}' -f $(if ((Get-Command claude -ErrorAction SilentlyContinue) -or (Test-Path (Join-Path $HOME '.claude'))) { 'detected' } else { 'not detected' }))
+    Write-Host ('winget       {0}' -f $(if (Get-Command winget -ErrorAction SilentlyContinue) { 'available' } else { 'not available' }))
+    Write-Host ''
+    Write-Host 'Supported framework Python: 3.11-3.14 (fresh Windows installs use 3.14).' -ForegroundColor DarkGray
 }
 
 function Ensure-Python {
@@ -135,21 +169,19 @@ function Ensure-Python {
         return $found.Executable
     }
 
-    Write-Step "Compatible Python is missing (minimum $MinimumPython)."
+    Write-Step 'Compatible Python is missing (supported range 3.11-3.14).'
     if ($DryRun) {
-        Write-Host 'Would install the latest stable Python available through winget.'
+        Write-Host "Would install $PreferredPythonPackage using winget."
         $env:AI_FRAMEWORK_PREREQ_PYTHON_ORIGIN = 'would-install'
         return $null
     }
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        throw 'Python is required and winget is unavailable. Install current stable Python 3.11+ and rerun the installer.'
+        throw 'Python 3.11-3.14 is required and winget is unavailable. Install Python 3.14 and rerun the installer.'
     }
-    if (-not (Confirm-Install 'Install the latest stable Python using winget?')) { throw 'Cancelled.' }
+    if (-not (Confirm-Install 'Install Python 3.14 using winget?')) { throw 'Cancelled.' }
 
-    $package = Get-LatestWingetPythonId
-    if (-not $package) { throw 'Could not determine the latest stable Python package from winget.' }
-    Write-Step "Installing $($package.Id)"
-    & winget install --id $package.Id -e --source winget --accept-package-agreements --accept-source-agreements
+    Write-Step "Installing $PreferredPythonPackage"
+    & winget install --id $PreferredPythonPackage -e --source winget --accept-package-agreements --accept-source-agreements
     if ($LASTEXITCODE -ne 0) { throw "winget Python install failed with exit code $LASTEXITCODE" }
 
     $found = Find-CompatiblePython
@@ -370,7 +402,7 @@ function Invoke-CoreAction {
         } else {
             $foundPython = Find-CompatiblePython
             if (-not $foundPython) {
-                throw "Python $MinimumPython or newer is required to run '$SelectedAction'."
+                throw "Python 3.11-3.14 is required to run '$SelectedAction'."
             }
             $pythonExe = $foundPython.Executable
             $env:AI_FRAMEWORK_PREREQ_PYTHON_ORIGIN = 'pre-existing'
@@ -472,7 +504,9 @@ function Invoke-InstallFlow([bool]$Preview = $false) {
     if ($selection[1]) { Write-Host "Claude  $claudeP" }
     Write-Host ''
     Write-Host 'Components: AI Framework, skills, AiIndex CLI/MCP, Graphify, native wiring' -ForegroundColor DarkGray
+    Show-PrerequisitePreflight
     if (-not $Preview) {
+        Pause-ForMenu 'Press Enter to continue to install confirmation'
         $confirm = Read-SingleSelect 'Continue?' @('Install','Cancel') 0 -AllowBack
         if ($confirm -ne 0) { return }
     }
@@ -495,6 +529,10 @@ function Invoke-RepairFlow([bool]$Preview = $false) {
     $selection = Read-MultiSelect $(if ($Preview) { 'Preview Update / Repair - select clients' } else { 'Update / Repair - select clients' }) $labels (Get-InstalledClientDefaults) -AllowBack
     if ($null -eq $selection) { return }
     $target = Convert-SelectionToTarget $selection
+
+    Clear-Host; Show-Banner
+    Write-Host $(if ($Preview) { 'Preview Update / Repair' } else { 'Update / Repair preflight' }) -ForegroundColor Yellow
+    Show-PrerequisitePreflight
 
     $status = Get-UpdateStatusObject
     $skipFw = $true
@@ -621,6 +659,10 @@ function Start-InteractiveInstaller {
 if ($script:InteractiveMode) {
     Start-InteractiveInstaller
     exit 0
+}
+
+if ($Action -in @('install','update-repair')) {
+    Show-PrerequisitePreflight
 }
 
 $code = Invoke-CoreAction -SelectedAction $Action -SelectedTarget $Target -SelectedProfile $Profile -SelectedCodexProfile $CodexProfile -SelectedClaudeProfile $ClaudeProfile -RequestedDryRun ([bool]$DryRun) -RequestedYes ([bool]$Yes) -RequestedSkipFrameworkUpdate ([bool]$SkipFrameworkUpdate) -RequestedNoAiIndexUpdate ([bool]$NoAiIndexUpdate) -Apply $Apply -JsonOutput ([bool]$JsonOutput)

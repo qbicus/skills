@@ -40,7 +40,7 @@ Validated on Linux x64 (Codex):
 - Codex install with `low` profile;
 - AiIndex install/link and current-version skip;
 - Graphify install/preservation;
-- 18/18 canonical skill wiring;
+- 19/19 canonical skill wiring;
 - Doctor, Update / Repair, profile changes, update checks, preview, uninstall, Doctor-after-uninstall, and reinstall;
 - safe refusal for modified legacy copied skills, with exact legacy copies eligible for migration to managed links.
 - AiIndex current-version skip and Graphify preservation.
@@ -591,10 +591,13 @@ Once implemented:
 ## Prerequisite lifecycle clarification
 
 - Python is a framework runtime prerequisite, not just an installer implementation detail.
-- Accept existing Python 3.11+ without forcing an upgrade.
-- Fresh Windows bootstrap installs the highest stable Python 3.x package currently available through winget.
-- Fresh Linux bootstrap installs the distribution's current Python package and verifies it is 3.11+.
+- Accept existing Python 3.11-3.14 without forcing an upgrade.
+- Fresh Windows bootstrap installs Python 3.14 through winget when no compatible Python 3.11-3.14 is available.
+- Fresh Linux bootstrap installs the distribution's Python package and verifies it is within the supported 3.11-3.14 range.
 - The bootstrap records whether Git/Python/uv were pre-existing or installed by the framework.
+- Install/Update / Repair show a prerequisite preflight before changing Git/Python/uv, including client detection and the planned prerequisite changes.
+- Graphify installation pins `uv tool install` to the already-selected compatible framework Python so uv does not silently choose Python 3.15+.
+- Doctor reports whether the active Python interpreter is within the supported range.
 - Uninstall must never uninstall Python, Git, or uv.
 
 
