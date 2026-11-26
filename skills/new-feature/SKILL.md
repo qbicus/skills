@@ -1,6 +1,6 @@
 ---
 name: new-feature
-description: "Drive a new feature through a mandatory staged workflow covering `nf-spec`, approval, `nf-design`, approval, `nf-tasks`, approval, and only then execution. Use when a user asks for `/new-feature`, wants disciplined feature delivery, or needs protection against skipping planning and starting implementation too early."
+description: "Drive a new feature through a mandatory staged workflow covering `nf-spec`, approval, `nf-design`, approval, stakeholder `nf-executive-summary`, `nf-tasks`, approval, and only then execution. Use when a user asks for `/new-feature`, wants disciplined feature delivery, or needs protection against skipping planning and starting implementation too early."
 ---
 
 # New Feature
@@ -46,22 +46,30 @@ Enforce a gated delivery process for new work. Do not skip stages, do not start 
 - Do not create tasks and do not code until design approval is explicit.
 - After design approval, log any material architecture, data-flow, interface, migration, security, or observability decisions using the `decision` skill.
 
-6. Run `nf-tasks` as the task stage
+6. Run `nf-executive-summary` as the stakeholder handoff stage
+- After design approval, run `nf-executive-summary` before task decomposition.
+- Generate `<projectFolder>/_localnotes/<featureShortName>/executive-summary.md` from the approved spec, approved design, and relevant decisions.
+- Treat the executive summary as a stakeholder communication artifact, not as a new source of implementation truth. It must not introduce new scope, architecture, estimates, or commitments.
+- After writing the Markdown summary, ask whether a PDF version is needed. Do not add a separate approval gate unless the user explicitly requests one. Preserve that PDF preference for later regenerations within the same feature workflow.
+- If PDF is requested, let `nf-executive-summary` resolve project/global branding references and create a new `executive-summary.pdf`; never modify the reference PDF.
+- Once the PDF choice is resolved, continue to `nf-tasks`.
+
+7. Run `nf-tasks` as the task stage
 - Treat `nf-tasks` as the required tasks phase for this workflow.
-- Produce the task plan from the approved design.
+- Produce the task plan from the approved design and approved spec, not from the executive summary.
 - If the approved design includes Avalonia UI work, apply `nf-avalonia` guidance while generating UI-related task slices and dependencies.
 - Require the task plan to mark `sequential-only` vs `parallel-safe` tasks, define any parallel batches, assign the intended execution role (`primary|executor|researcher|fast`) per task where delegation is useful, and assign `Agent 1..N` slots without exceeding the approved maximum from the spec.
 - Write the task plan to `<projectFolder>/_localnotes/<featureShortName>/dev-todos.md` unless the user requests another filename.
 
-7. Stop for task-plan approval
+8. Stop for task-plan approval
 - Ask for explicit approval of the task plan.
 - If the user asks to "just start coding" before this approval, refuse and point back to the required process.
 - If the requested change only affects sequencing, batching, rollout ordering, or task decomposition, revise the task plan and ask again.
-- If the requested change alters implementation approach or architecture, return to `nf-design`, revise it, get design approval again, then regenerate the task plan.
-- If the requested change alters requirements, scope, user-visible behavior, core entities, contracts, or validations, return to `nf-spec`, revise it, get spec approval again, then regenerate design and the task plan.
+- If the requested change alters implementation approach or architecture, return to `nf-design`, revise it, get design approval again, regenerate the executive summary and regenerate/omit the PDF according to the preserved preference, then regenerate the task plan.
+- If the requested change alters requirements, scope, user-visible behavior, core entities, contracts, or validations, return to `nf-spec`, revise it, get spec approval again, then regenerate design, the executive summary, and the task plan.
 - After task-plan approval, log any material sequencing, rollout, or risk-management decisions using the `decision` skill.
 
-8. Execute only after approval
+9. Execute only after approval
 - Start implementation only after spec, design, and task-plan approvals are all explicit.
 - Before execution, tell the user whether the approved task plan is `sequential-only` or `parallel-eligible`.
 - If the plan is `parallel-eligible`, ask whether to execute in parallel or one task at a time. Do not exceed the approved maximum agent count from the spec.
@@ -77,8 +85,8 @@ Enforce a gated delivery process for new work. Do not skip stages, do not start 
 - If the approved spec is `substantial: true`, run `advisor` in `complete` mode after verification and before declaring the feature complete. Resolve material concerns or report the blocking outcome.
 - During execution, append a `decision` entry whenever an implementation choice materially changes behavior, contracts, architecture, storage, rollout, operability, or testing strategy.
 - If execution reveals a change that affects only task sequencing, return to `nf-tasks` approval.
-- If execution reveals a change that affects implementation approach or architecture without changing approved requirements, return to `nf-design` approval and then re-run `nf-tasks`.
-- If execution reveals a change that affects requirements, scope, user-visible behavior, core entities, contracts, or validations, return to `nf-spec` approval and then re-run all downstream stages.
+- If execution reveals a change that affects implementation approach or architecture without changing approved requirements, return to `nf-design` approval, regenerate `nf-executive-summary`, and then re-run `nf-tasks`.
+- If execution reveals a change that affects requirements, scope, user-visible behavior, core entities, contracts, or validations, return to `nf-spec` approval and then re-run all downstream stages, including `nf-executive-summary`.
 
 ## Decision Logging Rules
 
@@ -94,13 +102,13 @@ Enforce a gated delivery process for new work. Do not skip stages, do not start 
 - Do not treat silence, impatience, or "looks fine" in another context as approval; get explicit confirmation tied to the current stage.
 - Do not let the user skip directly from idea to design, tasks, or code unless they explicitly instruct you to abandon this workflow.
 - If the user wants to bypass the process, state that the `new-feature` skill is designed to prevent that shortcut and ask whether they want to exit the skill-driven flow.
-- If an upstream artifact changes after approval, return to the affected stage and re-run downstream stages that depend on it.
+- If an upstream artifact changes after approval, return to the affected stage and re-run downstream stages that depend on it. Any approved spec/design change invalidates the existing executive summary and any derived PDF, which must be regenerated after upstream approval is restored.
 - Use the earliest invalidated stage rule: go back to `nf-spec` for requirement changes, `nf-design` for implementation-approach changes, and `nf-tasks` for execution-plan-only changes.
 
 ## Output Rules
 
 - At each stage, state the current gate clearly: `awaiting spec approval`, `awaiting design approval`, or `awaiting task-plan approval`.
-- Reference the artifact path written for that stage.
+- Reference the artifact path written for that stage. After design approval, also report the `executive-summary.md` path and, when generated, the `executive-summary.pdf` path.
 - Reference `decisions.md` whenever a new decision entry is added.
 - When execution begins, state that all three approvals have been received and include the approved `substantial: true|false` classification.
 - During execution, show task progress with completed, active, blocked, and remaining tasks or batches.

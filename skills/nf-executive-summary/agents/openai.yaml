@@ -1,0 +1,4 @@
+interface:
+  display_name: "NF Executive Summary"
+  short_description: "Create PM-ready Markdown summaries with optional branded PDF."
+  default_prompt: "Use $nf-executive-summary to create the stakeholder executive summary from the approved spec and design, then ask whether a PDF version is needed."

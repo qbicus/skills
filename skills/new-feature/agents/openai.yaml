@@ -1,4 +1,4 @@
 interface:
   display_name: "New Feature"
-  short_description: "Enforce nf-spec/nf-design/nf-tasks before coding."
-  default_prompt: "Use $new-feature to drive this feature through nf-spec, approval, nf-design, approval, nf-tasks, approval, and only then execution."
+  short_description: "Enforce spec/design/executive-summary/tasks before coding."
+  default_prompt: "Use $new-feature to drive this feature through nf-spec, approval, nf-design, approval, nf-executive-summary with optional PDF, nf-tasks, approval, and only then execution."

@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "name": "AI Framework Standard Executive Summary",
+  "page": {
+    "size": "A4",
+    "orientation": "portrait",
+    "marginsMm": {
+      "top": 20,
+      "right": 20,
+      "bottom": 20,
+      "left": 20
+    }
+  },
+  "colors": {
+    "background": "#FFFFFF",
+    "text": "#1F2937",
+    "mutedText": "#6B7280",
+    "primary": "#1F2937",
+    "accent": "#2563EB",
+    "rule": "#D1D5DB",
+    "calloutBackground": "#F3F4F6"
+  },
+  "typography": {
+    "preferredFonts": [
+      "Arial",
+      "Liberation Sans",
+      "DejaVu Sans"
+    ],
+    "titlePt": 24,
+    "heading1Pt": 16,
+    "heading2Pt": 13,
+    "bodyPt": 10.5,
+    "captionPt": 9,
+    "lineHeight": 1.25
+  },
+  "header": {
+    "enabled": false
+  },
+  "footer": {
+    "enabled": true,
+    "pageNumbers": true,
+    "documentLabel": "Executive Summary"
+  },
+  "logo": {
+    "enabled": false,
+    "placement": "top-right",
+    "maxWidthMm": 35
+  },
+  "tables": {
+    "headerBackground": "#F3F4F6",
+    "borderColor": "#D1D5DB",
+    "cellPaddingMm": 2.5
+  },
+  "callouts": {
+    "background": "#F3F4F6",
+    "accentBorder": "#2563EB"
+  },
+  "notes": "Fallback style used only when no explicit, project, or global reference PDF is available."
+}

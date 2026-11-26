@@ -29,6 +29,7 @@ Read project context from:
 - `.ai/deployment.md`
 - `.ai/test-cases/README.md`
 - `.ai/providers/README.md` (and provider override files when present)
+- `.ai/templates/executive-summary/README.md` (optional PDF branding override)
 
 ## Rules
 

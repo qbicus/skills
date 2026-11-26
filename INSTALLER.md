@@ -40,7 +40,7 @@ Validated on Linux x64 (Codex):
 - Codex install with `low` profile;
 - AiIndex install/link and current-version skip;
 - Graphify install/preservation;
-- 19/19 canonical skill wiring;
+- 19/19 canonical skill wiring at the time of that live validation (the current framework catalog now contains 20 skills after adding `nf-executive-summary`);
 - Doctor, Update / Repair, profile changes, update checks, preview, uninstall, Doctor-after-uninstall, and reinstall;
 - safe refusal for modified legacy copied skills, with exact legacy copies eligible for migration to managed links.
 - AiIndex current-version skip and Graphify preservation.

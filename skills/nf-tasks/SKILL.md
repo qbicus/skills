@@ -13,6 +13,7 @@ Use the template in [references/dev-todos-template.md](references/dev-todos-temp
 
 1. Confirm inputs
 - Require an approved design doc path or pasted content.
+- When invoked from `new-feature`, expect `nf-executive-summary` to have already produced the stakeholder handoff, but do not use that simplified summary as the source for task decomposition; use the approved design and spec.
 - Capture `projectFolder` and `featureShortName`.
 - Read the approved spec's `Execution Classification` and `Parallel Execution Preference` before assigning task groups.
 

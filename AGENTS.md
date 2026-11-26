@@ -59,6 +59,7 @@ Common mappings:
 - New feature: `skills/new-feature`
 - Feature spec: `skills/nf-spec`
 - Feature design: `skills/nf-design`
+- Feature executive summary / stakeholder handoff: `skills/nf-executive-summary`
 - Feature tasks: `skills/nf-tasks`
 - Decision logging: `skills/decision`
 - End-of-session wrap-up: `skills/session-close`

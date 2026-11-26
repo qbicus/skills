@@ -1,9 +1,10 @@
 # Skill List
 
-19 canonical framework skills are installed for supported clients.
+20 canonical framework skills are installed for supported clients.
 
 - `nf-spec` (used by `new-feature`)
 - `nf-design` (used by `new-feature`)
+- `nf-executive-summary` (used by `new-feature`)
 - `nf-tasks` (used by `new-feature`)
 - `nf-avalonia` (used by `new-feature`)
 - `decision` (standalone, used by `new-feature`, `session-close`)
@@ -26,7 +27,7 @@
 
 ### `new-feature`
 Top-level gated workflow for building a feature from start to finish.
-Chain: `nf-spec` -> approval -> `nf-design` -> approval -> `nf-tasks` -> approval -> execution.
+Chain: `nf-spec` -> approval -> `nf-design` -> approval -> `nf-executive-summary` -> optional PDF -> `nf-tasks` -> approval -> execution.
 Also uses `decision` for important decisions and `nf-avalonia` when the feature includes Avalonia or cross-platform desktop UI.
 
 ### `nf-spec`
@@ -36,6 +37,11 @@ Creates the implementation-ready feature spec, including requirements, contracts
 ### `nf-design`
 Design stage for `new-feature`.
 Turns the approved spec into a file-by-file implementation design with architecture, risks, observability, rollout, and test planning.
+
+
+### `nf-executive-summary`
+Stakeholder communication stage for `new-feature`.
+Creates `executive-summary.md` from the approved spec/design, then asks whether a PDF is needed. Optional PDF branding resolves from an explicit/project/global reference PDF and falls back to the skill's bundled `standard-style.json`. Reference PDFs are visual sources only; derived style caches are SHA-256 invalidated when the source PDF changes.
 
 ### `nf-tasks`
 Task-planning stage for `new-feature`.

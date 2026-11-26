@@ -22,7 +22,7 @@ Inspect first, show me the planned changes, then proceed.
 - create only missing framework project scaffold files;
 - create or preserve `.ai-index.json` and set up AiIndex repository intelligence;
 - detect/use Graphify and avoid unnecessary graph rebuilds;
-- add missing generated-data ignore entries such as `.ai-index/` and `graphify-out/`;
+- add missing generated-data ignore entries such as `.ai-index/`, `graphify-out/`, and `.ai/cache/`;
 - keep `.ai-index.json` and useful repo-local `.ai/` project knowledge commit-friendly by default;
 - ask before broad/expensive full or rebuild indexing on an existing repository unless that exact operation has already been explicitly approved;
 - delegate bounded mechanical setup/inventory work where useful;

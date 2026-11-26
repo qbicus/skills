@@ -8,6 +8,7 @@ Chain:
 - `nf-design`
 - `advisor:plan` when substantial
 - approval
+- `nf-executive-summary` (Markdown always; optional branded PDF)
 - `nf-tasks`
 - approval
 - execution
@@ -25,11 +26,12 @@ Default behavior:
 - use provider-neutral roles (`primary`, `executor`, `researcher`, `advisor`, `fast`)
 - invoke `advisor:stuck` when the configured repeated-failure threshold is reached
 - use `parallel-exec` only when approved parallel execution is chosen
+- regenerate the executive summary/PDF whenever an approved upstream spec or design change invalidates them
 
 Example prompts:
 - `Use $new-feature for customer-import and start from nf-spec.`
 - `Use $new-feature for customer-import. The spec in _localnotes/customer-import/specs.md is approved. Continue with nf-design.`
-- `Use $new-feature for customer-import. The design in _localnotes/customer-import/design.md is approved. Generate nf-tasks.`
+- `Use $new-feature for customer-import. The design in _localnotes/customer-import/design.md is approved. Generate the executive summary, ask about PDF, then continue to nf-tasks.`
 - `Use $new-feature for customer-import. The task plan in _localnotes/customer-import/dev-todos.md is approved. Start execution.`
 - `Use $new-feature for customer-import. Resume from task execution and continue with the remaining approved tasks.`
 - `Use $new-feature for customer-import. Resume execution from _localnotes/customer-import/dev-todos.md. Completed: T001, T002. In progress: T003. Continue from the remaining approved tasks.`

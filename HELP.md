@@ -13,7 +13,10 @@ Quick operator reference. See `README.md` for full documentation.
 ~/.ai/providers/claude.low.yml  Claude lower-usage profile
 ~/.ai/providers/claude.high.yml Claude quality-first profile
 ~/.ai/skills/                   reusable workflows
+~/.ai/templates/executive-summary/reference.pdf  optional global PDF branding reference
 <repo>/.ai/providers/*.yml      optional repository overrides
+<repo>/.ai/templates/executive-summary/reference.pdf  optional project PDF branding override
+<repo>/.ai/cache/               generated/local derived framework cache (normally ignored)
 ```
 
 ## Role routing
@@ -66,6 +69,7 @@ python "$env:USERPROFILE\.ai\scripts\ai.py" provider --provider codex --set-prof
 | `new-feature` | Full gated feature delivery | `Use new-feature for <feature>.` |
 | `nf-spec` | Feature specification | `Use nf-spec to draft/revise specs.md.` |
 | `nf-design` | Implementation design | `Use nf-design from the approved spec.` |
+| `nf-executive-summary` | PM/stakeholder summary + optional branded PDF | `Use nf-executive-summary from the approved spec/design.` |
 | `nf-tasks` | Execution task plan | `Use nf-tasks from the approved design.` |
 | `nf-avalonia` | Avalonia support inside NF | Usually activated by `new-feature` |
 | `advisor` | Independent checkpoint | `Use advisor in plan|stuck|complete mode.` |
@@ -115,6 +119,7 @@ Inspect first, show me the planned changes, then proceed.
 ```text
 nf-spec -> approve
 nf-design -> advisor:plan if substantial -> approve
+nf-executive-summary -> executive-summary.md -> ask about optional PDF
 nf-tasks -> approve
 execute sequentially OR explicitly approved parallel-exec
 advisor:stuck when same failure threshold is reached

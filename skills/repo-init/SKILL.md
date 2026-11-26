@@ -58,6 +58,7 @@ Keep setup work bounded and avoid spending the primary model on mechanical inven
    .ai/providers/
    .ai/skills/
    .ai/prompts/
+   .ai/templates/executive-summary/
    .ai/.session-state.json
    .ai-index.json
    ```
@@ -86,9 +87,10 @@ Keep setup work bounded and avoid spending the primary model on mechanical inven
    # AI repository intelligence (generated/local)
    .ai-index/
    graphify-out/
+   .ai/cache/
    ```
 
-   `.ai-index.json` is configuration and is normally intended to be committed. The repo-local `.ai/` folder also contains project knowledge/configuration and should not be blanket-ignored unless the project explicitly wants it local-only.
+   `.ai-index.json` is configuration and is normally intended to be committed. The repo-local `.ai/` folder also contains project knowledge/configuration and should not be blanket-ignored unless the project explicitly wants it local-only. `.ai/cache/` is derived local data (for example executive-summary branding extraction) and should normally remain ignored.
 
 8. **Verify the result.**
    - Confirm the expected framework files exist or were intentionally preserved.

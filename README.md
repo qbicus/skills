@@ -232,6 +232,8 @@ Repository overrides are read conceptually from:
 <repo>/.ai/providers/codex.<profile>.yml
 ```
 
+Other project-local framework overrides also live under `<repo>/.ai/`. For example, `nf-executive-summary` can use `<repo>/.ai/templates/executive-summary/reference.pdf` as a project-specific PDF branding reference.
+
 The framework resolves effective Codex routing and renders native Codex custom-agent/config fragments. The installer safely merges the framework-owned wiring into `~/.codex` while preserving unrelated configuration. See [`docs/setup-codex.md`](docs/setup-codex.md).
 
 ### Claude Code
@@ -473,6 +475,9 @@ nf-spec
 nf-design
   -> advisor:plan when substantial
   -> design approval
+nf-executive-summary
+  -> executive-summary.md
+  -> ask whether optional branded PDF is needed
 nf-tasks
   -> task-plan approval
 execution
@@ -507,6 +512,28 @@ Example:
 
 ```text
 Use nf-design with the approved customer-import specs.md.
+```
+
+
+### `nf-executive-summary`
+
+Creates a PM/product/stakeholder-facing `executive-summary.md` from the approved spec and design after design approval and before task decomposition. It does not replace the approved spec/design and `nf-tasks` must continue to plan from those authoritative artifacts.
+
+After Markdown is created, the skill asks whether a PDF version is needed. PDF branding is resolved in this order:
+
+```text
+explicit reference PDF for the current run
+<repo>/.ai/templates/executive-summary/reference.pdf
+~/.ai/templates/executive-summary/reference.pdf
+skills/nf-executive-summary/assets/standard-style.json
+```
+
+Reference PDFs are used only as visual branding references and are never modified. Derived style data is cached under `.ai/cache/executive-summary/` (or `~/.ai/cache/executive-summary/` globally) and automatically rebuilt when the reference PDF SHA-256 or cache schema changes. Embedded font files are never extracted or redistributed; unavailable fonts are substituted while preserving hierarchy.
+
+Example:
+
+```text
+Use nf-executive-summary with the approved customer-import specs.md and design.md.
 ```
 
 ### `nf-tasks`
